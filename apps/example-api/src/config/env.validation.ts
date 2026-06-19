@@ -13,7 +13,10 @@ export const envSchema = z.object({
   RABBITMQ_URL: z.url(),
   // MiniMax (OpenAI-compatible). Key is a runtime secret (Sealed Secret in k8s).
   // Model/base are env-tunable so you can point at whatever your key supports.
-  MINIMAX_API_KEY: z.string().min(1),
+  // .trim(): a stray trailing newline/space from how the secret was pasted would
+  // corrupt the `Authorization: Bearer <key>` header → MiniMax 401 "carry the API
+  // secret key". Trimming makes auth robust to that.
+  MINIMAX_API_KEY: z.string().trim().min(1),
   MINIMAX_BASE_URL: z.url().default("https://api.minimax.io/v1"),
   MINIMAX_MODEL: z.string().default("MiniMax-M2.7"),
   // generate attempts allowed per IP within the window (Redis-backed rate limit)
