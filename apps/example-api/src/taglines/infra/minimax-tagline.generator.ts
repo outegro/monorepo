@@ -70,7 +70,9 @@ export class MiniMaxTaglineGenerator implements TaglineGenerator {
       const taglines = this.parse(content);
       if (taglines.length === 0) {
         // Log a preview so a parse/format miss is diagnosable without re-running.
-        this.logger.warn(`no taglines parsed; raw content (${content.length} chars): ${content.slice(0, 300)}`);
+        this.logger.warn(
+          `no taglines parsed; raw content (${content.length} chars): ${content.slice(0, 300)}`,
+        );
         throw new Error("model returned no taglines");
       }
       return taglines.slice(0, 5);
