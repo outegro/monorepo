@@ -47,7 +47,10 @@ export class MiniMaxTaglineGenerator implements TaglineGenerator {
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: `Product: ${prompt}` },
           ],
-          max_tokens: 512,
+          // MiniMax-M2.x is a reasoning model: it spends tokens on a <think> block
+          // before the answer. 512 was too low → budget exhausted mid-thought, no
+          // final JSON emitted → "model returned no taglines". Give it room.
+          max_tokens: 4096,
           temperature: 1,
         }),
         signal: controller.signal,
@@ -65,7 +68,11 @@ export class MiniMaxTaglineGenerator implements TaglineGenerator {
 
       const content = data.choices?.[0]?.message?.content ?? "";
       const taglines = this.parse(content);
-      if (taglines.length === 0) throw new Error("model returned no taglines");
+      if (taglines.length === 0) {
+        // Log a preview so a parse/format miss is diagnosable without re-running.
+        this.logger.warn(`no taglines parsed; raw content (${content.length} chars): ${content.slice(0, 300)}`);
+        throw new Error("model returned no taglines");
+      }
       return taglines.slice(0, 5);
     } finally {
       clearTimeout(timeout);
