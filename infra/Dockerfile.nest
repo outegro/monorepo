@@ -18,7 +18,10 @@ RUN pnpm install --frozen-lockfile
 # at runtime; the migration Job (prisma migrate deploy) still fails loud if it's
 # missing there. This placeholder lives in the build stage only — not the runner.
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
-RUN pnpm --filter "@outegro/${APP}" build
+# Build via turbo so the `db:generate` task (prisma generate) runs once before the
+# package build — prevents the concurrent-`prisma generate` race and keeps a single
+# source of generation across build/typecheck/test.
+RUN pnpm turbo run build --filter "@outegro/${APP}"
 RUN pnpm --filter "@outegro/${APP}" --prod deploy /out
 
 FROM ${NODE_IMAGE} AS runner

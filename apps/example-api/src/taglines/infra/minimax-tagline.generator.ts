@@ -58,7 +58,9 @@ export class MiniMaxTaglineGenerator implements TaglineGenerator {
       }
       const data = (await res.json()) as ChatCompletion;
       if (data.base_resp?.status_code && data.base_resp.status_code !== 0) {
-        throw new Error(`minimax error ${data.base_resp.status_code}: ${data.base_resp.status_msg}`);
+        throw new Error(
+          `minimax error ${data.base_resp.status_code}: ${data.base_resp.status_msg}`,
+        );
       }
 
       const content = data.choices?.[0]?.message?.content ?? "";

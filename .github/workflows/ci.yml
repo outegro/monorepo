@@ -64,7 +64,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # AUDIT_MINIMAX #50, #53: cache-from + cache-to to GHA.
-      - name: Build (PR: no push)
+      - name: Build PR (no push)
         if: github.ref != 'refs/heads/main' && steps.changed.outputs.app == 'true'
         uses: docker/build-push-action@v6
         with:

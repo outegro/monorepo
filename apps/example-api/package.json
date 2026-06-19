@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "prisma generate && nest build",
+    "build": "nest build",
     "dev": "prisma generate && nest start --watch",
     "start": "node dist/main.js",
-    "typecheck": "prisma generate && tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "biome check .",
     "db:generate": "prisma generate",
