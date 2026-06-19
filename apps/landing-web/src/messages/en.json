@@ -1,0 +1,21 @@
+{
+  "app": {
+    "title": "Outegro",
+    "subtitle": "Reusable platform. Ship products fast."
+  },
+  "tagline": {
+    "eyebrow": "Powered by MiniMax AI",
+    "title": "Name your next big thing",
+    "subtitle": "Describe your product — get five punchy taglines in seconds.",
+    "placeholder": "e.g. a self-hosted platform-in-a-box for indie developers",
+    "generate": "Generate taglines",
+    "generating": "Generating…",
+    "queued": "Queued — the AI is thinking…",
+    "failed": "Generation failed. Try again.",
+    "rateLimited": "Too many requests — slow down a little.",
+    "copy": "Copy",
+    "copied": "Copied to clipboard",
+    "tooShort": "Tell me a bit more (3+ characters).",
+    "stats": "{count} taglines generated so far"
+  }
+}

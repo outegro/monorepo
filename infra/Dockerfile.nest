@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1
+# Shared image for any NestJS backend. Build with:
+#   docker build --build-arg APP=auth-backend -f infra/Dockerfile.nest .
+#
+# Prisma 7 has no native query engine → nothing engine-shaped to copy into the runner.
+# tini as PID 1 so SIGCHLD/SIGTERM work correctly.
+ARG NODE_IMAGE=node:24-alpine
+
+FROM ${NODE_IMAGE} AS build
+ARG APP
+RUN apk add --no-cache libc6-compat
+RUN corepack enable
+WORKDIR /repo
+COPY . .
+RUN pnpm install --frozen-lockfile
+# `prisma generate` (inside the app's build) only needs DATABASE_URL to be present
+# — it reads the schema, never connects. The real URL comes from the sealed secret
+# at runtime; the migration Job (prisma migrate deploy) still fails loud if it's
+# missing there. This placeholder lives in the build stage only — not the runner.
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
+RUN pnpm --filter "@outegro/${APP}" build
+RUN pnpm --filter "@outegro/${APP}" --prod deploy /out
+
+FROM ${NODE_IMAGE} AS runner
+ARG APP
+RUN apk add --no-cache tini
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /out/node_modules ./node_modules
+COPY --from=build /repo/apps/${APP}/dist ./dist
+COPY --from=build /repo/apps/${APP}/src/generated ./dist/generated
+COPY --from=build /repo/apps/${APP}/prisma ./prisma
+USER node
+EXPOSE 3000
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "dist/main.js"]

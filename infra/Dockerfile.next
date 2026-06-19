@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1
+# Shared image for any Next.js frontend (standalone Node server). Build with:
+#   docker build --build-arg APP=auth-web -f infra/Dockerfile.next .
+#
+# tini as PID 1.
+ARG NODE_IMAGE=node:24-alpine
+
+FROM ${NODE_IMAGE} AS build
+ARG APP
+RUN apk add --no-cache libc6-compat
+RUN corepack enable
+WORKDIR /repo
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter "@outegro/${APP}" build
+
+FROM ${NODE_IMAGE} AS runner
+ARG APP
+RUN apk add --no-cache tini
+ENV APP=${APP}
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+# `output: "standalone"` traces the minimal server + node_modules from the monorepo root.
+COPY --from=build /repo/apps/${APP}/.next/standalone ./
+COPY --from=build /repo/apps/${APP}/.next/static ./apps/${APP}/.next/static
+COPY --from=build /repo/apps/${APP}/public ./apps/${APP}/public
+USER node
+EXPOSE 3000
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["sh", "-c", "node apps/$APP/server.js"]

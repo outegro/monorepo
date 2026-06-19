@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm biome ci .
+      # AUDIT_MINIMAX #61: --continue runs all apps even if one fails, aggregates errors.
+      - run: pnpm turbo run typecheck test build --filter='...[origin/main]' --continue
+
+  # Build + push changed app images, then bump the tag in gitops.
+  # AUDIT_MINIMAX #54: CI → gitops bump is implemented (was TODO).
+  # On PR (AUDIT_MINIMAX #62) we also do a docker build without push to catch
+  # broken Dockerfiles before merge.
+  images:
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write, id-token: write }
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Add your real services here as you create them.
+          - { app: example-api, dockerfile: infra/Dockerfile.nest }
+          - { app: landing-web, dockerfile: infra/Dockerfile.next }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changed
+        with:
+          filters: |
+            app:
+              - 'apps/${{ matrix.app }}/**'
+              - 'pnpm-lock.yaml'
+              - 'infra/**'
+              - 'charts/**'
+              - 'tsconfig.base.json'
+
+      - name: Set up Docker Buildx
+        if: steps.changed.outputs.app == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.ref == 'refs/heads/main' && steps.changed.outputs.app == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # AUDIT_MINIMAX #50, #53: cache-from + cache-to to GHA.
+      - name: Build (PR: no push)
+        if: github.ref != 'refs/heads/main' && steps.changed.outputs.app == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          build-args: APP=${{ matrix.app }}
+          push: false
+          tags: ghcr.io/outegro/${{ matrix.app }}:pr-${{ github.event.pull_request.number }}
+          # Линкует пакет к репо outegro/monorepo → наследование доступов/видимости (монорепо: имя пакета ≠ имя репо).
+          labels: |
+            org.opencontainers.image.source=https://github.com/outegro/monorepo
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+      - name: Build & push (main)
+        if: github.ref == 'refs/heads/main' && steps.changed.outputs.app == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          build-args: APP=${{ matrix.app }}
+          push: true
+          tags: ghcr.io/outegro/${{ matrix.app }}:${{ github.sha }}
+          # Линкует пакет к репо outegro/monorepo → наследование доступов/видимости (монорепо: имя пакета ≠ имя репо).
+          labels: |
+            org.opencontainers.image.source=https://github.com/outegro/monorepo
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  # Bump image tag in outegro/gitops via PR (AUDIT_MINIMAX #35 — never push to main).
+  bump-gitops:
+    needs: images
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: outegro/gitops
+          token: ${{ secrets.GITOPS_PAT }}
+          path: gitops
+      - name: Bump tag and open PR
+        env:
+          SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITOPS_PAT }}
+        run: |
+          set -euo pipefail
+          for app in example-api landing-web; do
+            file="gitops/values/${app}.yaml"
+            if [ ! -f "$file" ]; then continue; fi
+            # Update only if a tag exists for this app.
+            if yq -e ".image.tag" "$file" >/dev/null 2>&1; then
+              yq -i ".image.tag = strenv(SHA)" "$file"
+              echo "Bumped $app → $SHA"
+            fi
+          done
+          cd gitops
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "ci/bump-${{ github.sha }}"
+          git add values/                    # только бампы тегов, не sealed-secrets и пр.
+          if git diff --cached --quiet; then
+            echo "No tag changes to commit."
+            exit 0
+          fi
+          git commit -m "ci: bump image tags to ${{ github.sha }}"
+          git push -u origin "ci/bump-${{ github.sha }}"
+          gh pr create \
+            --title "ci: bump image tags to ${{ github.sha }}" \
+            --body "Automated bump from ${{ github.workflow }}." \
+            --base main \
+            --head "ci/bump-${{ github.sha }}"
