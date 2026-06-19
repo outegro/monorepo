@@ -72,7 +72,7 @@ jobs:
           file: ${{ matrix.dockerfile }}
           build-args: APP=${{ matrix.app }}
           push: false
-          tags: ghcr.io/outegro/${{ matrix.app }}:pr-${{ github.event.pull_request.number }}
+          tags: ghcr.io/outegro/monorepo/${{ matrix.app }}:pr-${{ github.event.pull_request.number }}
           # Линкует пакет к репо outegro/monorepo → наследование доступов/видимости (монорепо: имя пакета ≠ имя репо).
           labels: |
             org.opencontainers.image.source=https://github.com/outegro/monorepo
@@ -87,7 +87,7 @@ jobs:
           file: ${{ matrix.dockerfile }}
           build-args: APP=${{ matrix.app }}
           push: true
-          tags: ghcr.io/outegro/${{ matrix.app }}:${{ github.sha }}
+          tags: ghcr.io/outegro/monorepo/${{ matrix.app }}:${{ github.sha }}
           # Линкует пакет к репо outegro/monorepo → наследование доступов/видимости (монорепо: имя пакета ≠ имя репо).
           labels: |
             org.opencontainers.image.source=https://github.com/outegro/monorepo

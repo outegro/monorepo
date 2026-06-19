@@ -22,7 +22,9 @@ ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 # package build — prevents the concurrent-`prisma generate` race and keeps a single
 # source of generation across build/typecheck/test.
 RUN pnpm turbo run build --filter "@outegro/${APP}"
-RUN pnpm --filter "@outegro/${APP}" --prod deploy /out
+# pnpm v10 only deploys "injected" workspaces by default; --legacy restores the
+# pre-v10 behavior (resolve workspace:* deps from the monorepo) for the prod prune.
+RUN pnpm --filter "@outegro/${APP}" --prod deploy --legacy /out
 
 FROM ${NODE_IMAGE} AS runner
 ARG APP
