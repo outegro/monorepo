@@ -18,7 +18,7 @@ export const envSchema = z.object({
   // secret key". Trimming makes auth robust to that.
   MINIMAX_API_KEY: z.string().trim().min(1),
   MINIMAX_BASE_URL: z.url().default("https://api.minimax.io/v1"),
-  MINIMAX_MODEL: z.string().default("MiniMax-M2.7"),
+  MINIMAX_MODEL: z.string().default("MiniMax-M3"),
   // generate attempts allowed per IP within the window (Redis-backed rate limit)
   GENERATE_RATE_LIMIT: z.coerce.number().default(5),
   GENERATE_RATE_WINDOW_SEC: z.coerce.number().default(60),
