@@ -20,8 +20,11 @@ jobs:
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm biome ci .
-      # AUDIT_MINIMAX #61: --continue runs all apps even if one fails, aggregates errors.
-      - run: pnpm turbo run typecheck test build --filter='...[origin/main]' --continue
+      # Run the whole graph, not `...[origin/main]`: on a push to main that base IS
+      # HEAD → diff is empty → 0 tasks → the gate silently passed without running
+      # typecheck/test/build. turbo's cache keeps a full run cheap. --continue
+      # aggregates all failures instead of stopping at the first.
+      - run: pnpm turbo run typecheck test build --continue
 
   # Build + push changed app images, then bump the tag in gitops.
   # AUDIT_MINIMAX #54: CI → gitops bump is implemented (was TODO).
