@@ -105,6 +105,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      packages: read # to check which images were actually pushed for this sha
     steps:
       # Skip cleanly (green) when GITOPS_PAT isn't configured — gitops is then
       # managed manually. With the secret set, the bump PR flow runs as designed.
@@ -125,6 +126,9 @@ jobs:
           repository: outegro/gitops
           token: ${{ secrets.GITOPS_PAT }}
           path: gitops
+      - name: Log in to GHCR (to verify which images exist)
+        if: steps.gate.outputs.enabled == 'true'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
       - name: Bump tag and open PR
         if: steps.gate.outputs.enabled == 'true'
         env:
@@ -135,7 +139,14 @@ jobs:
           for app in example-api landing-web; do
             file="gitops/values/services/${app}.yaml"
             if [ ! -f "$file" ]; then continue; fi
-            # Update only if a tag exists for this app.
+            # Only bump apps whose image was ACTUALLY built+pushed for this sha. The
+            # images job builds via paths-filter, so a push that touches only one app
+            # produces only that image — bumping the other to a non-existent tag would
+            # break its deploy (ImagePullBackOff).
+            if ! docker manifest inspect "ghcr.io/outegro/monorepo/${app}:${SHA}" >/dev/null 2>&1; then
+              echo "No image ghcr.io/outegro/monorepo/${app}:${SHA} — skipping $app."
+              continue
+            fi
             if yq -e ".image.tag" "$file" >/dev/null 2>&1; then
               yq -i ".image.tag = strenv(SHA)" "$file"
               echo "Bumped $app → $SHA"

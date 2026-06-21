@@ -29,6 +29,8 @@ export class MiniMaxTaglineGenerator implements TaglineGenerator {
     this.apiKey = config.get("MINIMAX_API_KEY", { infer: true });
     this.baseUrl = config.get("MINIMAX_BASE_URL", { infer: true });
     this.model = config.get("MINIMAX_MODEL", { infer: true });
+    // Ops visibility: which model/endpoint are we actually talking to (key never logged).
+    this.logger.log(`MiniMax generator ready: model=${this.model} base=${this.baseUrl}`);
   }
 
   async generate(prompt: string): Promise<string[]> {
