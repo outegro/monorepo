@@ -147,8 +147,11 @@ jobs:
               echo "No image ghcr.io/outegro/monorepo/${app}:${SHA} — skipping $app."
               continue
             fi
-            if yq -e ".image.tag" "$file" >/dev/null 2>&1; then
-              yq -i ".image.tag = strenv(SHA)" "$file"
+            # Tag lives at .app.image.tag (outegro-service chart wraps values under
+            # `app:`), NOT .image.tag — the wrong path made `yq -e` exit non-zero and
+            # the bump was silently skipped ("No tag changes"), so no PR was opened.
+            if yq -e ".app.image.tag" "$file" >/dev/null 2>&1; then
+              yq -i ".app.image.tag = strenv(SHA)" "$file"
               echo "Bumped $app → $SHA"
             fi
           done

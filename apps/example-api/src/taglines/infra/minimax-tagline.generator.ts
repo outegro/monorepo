@@ -82,6 +82,13 @@ export class MiniMaxTaglineGenerator implements TaglineGenerator {
         throw new Error("model returned no taglines");
       }
       return taglines.slice(0, 5);
+    } catch (err) {
+      // Surface a timeout as an actionable message instead of the opaque
+      // "This operation was aborted" that fetch throws on controller.abort().
+      if (err instanceof Error && err.name === "AbortError") {
+        throw new Error(`minimax timed out after ${this.timeoutMs}ms`);
+      }
+      throw err;
     } finally {
       clearTimeout(timeout);
     }
