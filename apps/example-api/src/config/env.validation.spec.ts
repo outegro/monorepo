@@ -34,6 +34,7 @@ describe("env.validation", () => {
     expect(result.PORT).toBe(3000);
     expect(result.MINIMAX_MODEL).toBe("MiniMax-M3");
     expect(result.MINIMAX_BASE_URL).toBe("https://api.minimax.io/v1");
+    expect(result.MINIMAX_TIMEOUT_MS).toBe(60_000);
     expect(result.GENERATE_RATE_LIMIT).toBe(5);
   });
 });

@@ -24,18 +24,22 @@ export class MiniMaxTaglineGenerator implements TaglineGenerator {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly model: string;
+  private readonly timeoutMs: number;
 
   constructor(config: ConfigService<Env, true>) {
     this.apiKey = config.get("MINIMAX_API_KEY", { infer: true });
     this.baseUrl = config.get("MINIMAX_BASE_URL", { infer: true });
     this.model = config.get("MINIMAX_MODEL", { infer: true });
+    this.timeoutMs = config.get("MINIMAX_TIMEOUT_MS", { infer: true });
     // Ops visibility: which model/endpoint are we actually talking to (key never logged).
-    this.logger.log(`MiniMax generator ready: model=${this.model} base=${this.baseUrl}`);
+    this.logger.log(
+      `MiniMax generator ready: model=${this.model} base=${this.baseUrl} timeout=${this.timeoutMs}ms`,
+    );
   }
 
   async generate(prompt: string): Promise<string[]> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30_000);
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
       const res = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",

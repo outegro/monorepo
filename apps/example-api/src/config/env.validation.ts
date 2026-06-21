@@ -19,6 +19,10 @@ export const envSchema = z.object({
   MINIMAX_API_KEY: z.string().trim().min(1),
   MINIMAX_BASE_URL: z.url().default("https://api.minimax.io/v1"),
   MINIMAX_MODEL: z.string().default("MiniMax-M3"),
+  // M3 is a reasoning model: it spends time on a <think> block before answering,
+  // so end-to-end latency runs 15–45s. A hardcoded 30s abort was clipping slow
+  // generations — make it tunable and default it generously.
+  MINIMAX_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   // generate attempts allowed per IP within the window (Redis-backed rate limit)
   GENERATE_RATE_LIMIT: z.coerce.number().default(5),
   GENERATE_RATE_WINDOW_SEC: z.coerce.number().default(60),
