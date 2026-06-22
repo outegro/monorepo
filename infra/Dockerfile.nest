@@ -35,6 +35,9 @@ COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /repo/apps/${APP}/dist ./dist
 COPY --from=build /repo/apps/${APP}/src/generated ./dist/generated
 COPY --from=build /repo/apps/${APP}/prisma ./prisma
+# prisma.config.ts is read by `prisma migrate deploy` (chart PreSync hook) to resolve
+# the datasource URL + schema path. Ship it so the same image can run migrations.
+COPY --from=build /repo/apps/${APP}/prisma.config.ts ./prisma.config.ts
 USER node
 EXPOSE 3000
 ENTRYPOINT ["/sbin/tini", "--"]
