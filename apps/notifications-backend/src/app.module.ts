@@ -4,6 +4,7 @@ import { LoggerModule } from "nestjs-pino";
 import { validate } from "./config/env.validation";
 import { HealthModule } from "./health/health.module";
 import { HelloModule } from "./hello/hello.module";
+import { PrismaModule } from "./prisma/prisma.module";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -18,6 +19,7 @@ const isProd = process.env.NODE_ENV === "production";
         autoLogging: true,
       },
     }),
+    PrismaModule,
     HealthModule,
     HelloModule,
   ],

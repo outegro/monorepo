@@ -1,0 +1,13 @@
+// Prisma 7 schema — NO `url` here (driver adapters; see prisma.config.ts + PrismaService).
+// Generator → gitignored src/generated; build runs `prisma generate`.
+// No models yet — add tables as the service grows, then `prisma migrate dev --name <x>`.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}

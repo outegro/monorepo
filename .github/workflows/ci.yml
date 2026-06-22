@@ -38,9 +38,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Add your real services here as you create them (auth-backend, id-web, …)
-          # once they have gitops values + a Deployment. Scaffolds aren't deployed yet.
+          # Backends → Dockerfile.nest, frontends (standalone Next) → Dockerfile.next.
           - { app: landing-web, dockerfile: infra/Dockerfile.next }
+          - { app: auth-backend, dockerfile: infra/Dockerfile.nest }
+          - { app: notifications-backend, dockerfile: infra/Dockerfile.nest }
+          - { app: payments-backend, dockerfile: infra/Dockerfile.nest }
+          - { app: id-web, dockerfile: infra/Dockerfile.next }
+          - { app: pay-web, dockerfile: infra/Dockerfile.next }
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -136,7 +140,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITOPS_PAT }}
         run: |
           set -euo pipefail
-          for app in landing-web; do
+          for app in landing-web auth-backend notifications-backend payments-backend id-web pay-web; do
             file="gitops/values/services/${app}.yaml"
             if [ ! -f "$file" ]; then continue; fi
             # Only bump apps whose image was ACTUALLY built+pushed for this sha. The
