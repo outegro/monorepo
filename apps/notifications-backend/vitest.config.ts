@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.spec.ts", "src/**/*.test.ts"],
+    // Integration tests (testcontainers, need docker) run via `test:int`, not the fast unit gate.
+    exclude: ["**/node_modules/**", "**/*.int.spec.ts"],
     globals: false,
   },
   resolve: {

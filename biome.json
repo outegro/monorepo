@@ -27,7 +27,8 @@
       "includes": ["apps/*-backend/**", "apps/*-api/**"],
       "linter": {
         "rules": {
-          "style": { "useImportType": "off" }
+          "style": { "useImportType": "off" },
+          "correctness": { "useHookAtTopLevel": "off" }
         }
       }
     }

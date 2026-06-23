@@ -1,13 +1,24 @@
 import { z } from "zod";
 
 /**
- * Env schema, Zod-validated on boot (fail-fast). Add service vars (REDIS_URL,
- * RABBITMQ_URL, provider keys, …) here as features land.
+ * Env schema, Zod-validated on boot (fail-fast). Provider keys are optional so the
+ * service boots in dev without them (EmailAdapter logs instead of sending; Telegram
+ * stays dormant until its secrets land).
  */
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.url(),
+  // RabbitMQ — the event bus this service consumes from.
+  RABBITMQ_URL: z.string().min(1).default("amqp://guest:guest@localhost:5672"),
+  // Email (Resend). Without a key, EmailAdapter logs the message instead of sending.
+  RESEND_API_KEY: z.string().trim().optional(),
+  RESEND_FROM: z.string().min(1).default("Outegro <noreply@outegro.com>"),
+  // Telegram bot (sending + webhook validation). Dormant until provided.
+  TELEGRAM_BOT_TOKEN: z.string().trim().optional(),
+  TELEGRAM_WEBHOOK_SECRET: z.string().trim().optional(),
+  // Shared secret for internal service-to-service calls (auth ↔ notifications).
+  INTERNAL_API_KEY: z.string().trim().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
