@@ -1,16 +1,29 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { LoggerModule } from "nestjs-pino";
+import { AuthModule } from "./auth/auth.module";
 import { validate } from "./config/env.validation";
 import { HealthModule } from "./health/health.module";
 import { HelloModule } from "./hello/hello.module";
+import { MessagingModule } from "./messaging/rabbitmq.module";
+import { OutboxModule } from "./outbox/outbox.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { RedisModule } from "./redis/redis.module";
+import { TokensModule } from "./tokens/tokens.module";
 
 const isProd = process.env.NODE_ENV === "production";
+// Tests inject env directly (testcontainers) — never read the dev `.env`, whose
+// localhost URLs would shadow the per-test container endpoints.
+const isTest = process.env.NODE_ENV === "test";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validate, envFilePath: [".env"] }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate,
+      envFilePath: [".env"],
+      ignoreEnvFile: isTest,
+    }),
     LoggerModule.forRoot({
       pinoHttp: {
         level: isProd ? "info" : "debug",
@@ -20,6 +33,11 @@ const isProd = process.env.NODE_ENV === "production";
       },
     }),
     PrismaModule,
+    RedisModule,
+    MessagingModule,
+    TokensModule,
+    OutboxModule,
+    AuthModule,
     HealthModule,
     HelloModule,
   ],

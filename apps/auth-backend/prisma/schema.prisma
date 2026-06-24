@@ -1,6 +1,7 @@
 // Prisma 7 schema — NO `url` here (driver adapters; see prisma.config.ts + PrismaService).
 // Generator → gitignored src/generated; build runs `prisma generate`.
-// No models yet — add tables as the service grows, then `prisma migrate dev --name <x>`.
+// auth owns its own DB. Relations are defined for FK integrity + cascade cleanup, but
+// queries stay explicit (no nested `include` / lazy fetches — CLAUDE.md hard rule).
 
 generator client {
   provider     = "prisma-client"
@@ -10,4 +11,131 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+/// A person. `email` is the anchor identity (email-code login uses this directly —
+/// it is NOT mirrored into `identities`, which is only for external providers).
+model User {
+  id            String   @id @default(uuid()) @db.Uuid
+  email         String   @unique
+  emailVerified Boolean  @default(false) @map("email_verified")
+  locale        String   @default("ru") // for backend-rendered notifications (email/telegram)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  identities   Identity[]
+  loginCodes   LoginCode[]
+  sessions     Session[]
+  entitlements Entitlement[]
+  credentials  WebauthnCredential[]
+
+  @@map("users")
+}
+
+/// External login providers (google now; apple/github later). subject = provider's
+/// stable user id (Google `sub`). One provider account → one user; one provider per user.
+model Identity {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  provider  String
+  subject   String
+  email     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject], name: "identity_provider_subject_uq")
+  @@unique([userId, provider], name: "identity_user_provider_uq")
+  @@map("identities")
+}
+
+/// One-time email login codes (hashed). attempts caps brute force; consumedAt makes it single-use.
+model LoginCode {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  codeHash   String    @map("code_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  attempts   Int       @default(0)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("login_codes")
+}
+
+/// Session metadata only (NOT tokens — those live in Redis as `sessrt:<id>`). `id` is the
+/// `sid` claim. Powers the "my sessions" UI, audit, and security alerts.
+model Session {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  authMethod    String    @map("auth_method") // email | google | passkey
+  userAgent     String?   @map("user_agent")
+  ip            String?
+  country       String?
+  city          String?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastActiveAt  DateTime  @default(now()) @map("last_active_at") @db.Timestamptz(6)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason String?   @map("revoked_reason") // user | reuse | expired
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+/// Authoritative access grants (service:role). Roles are derived from here, never trusted
+/// from stale tokens. source = manual (admin) | payment.
+model Entitlement {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  service   String
+  role      String
+  source    String
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, service, role], name: "entitlement_user_service_role_uq")
+  @@index([userId])
+  @@map("entitlements")
+}
+
+/// WebAuthn/passkey credentials — public key + counter only (private key stays on device).
+/// Multiple per user. counter regression ⇒ cloned authenticator ⇒ reject.
+model WebauthnCredential {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  credentialId String   @unique @map("credential_id")
+  publicKey    Bytes    @map("public_key")
+  counter      Int      @default(0)
+  transports   String[]
+  deviceType   String?  @map("device_type")
+  backedUp     Boolean  @default(false) @map("backed_up")
+  name         String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("webauthn_credentials")
+}
+
+/// Transactional outbox: domain events written in the SAME tx as the business change,
+/// then a relay publishes them to RabbitMQ (publishedAt set). `id` = event.id (idempotency).
+model OutboxEvent {
+  id          String    @id @db.Uuid
+  exchange    String
+  routingKey  String    @map("routing_key")
+  payload     Json
+  occurredAt  DateTime  @map("occurred_at") @db.Timestamptz(6)
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([publishedAt])
+  @@map("outbox")
 }
