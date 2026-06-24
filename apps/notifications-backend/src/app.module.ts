@@ -7,6 +7,7 @@ import { HelloModule } from "./hello/hello.module";
 import { MessagingModule } from "./messaging/rabbitmq.module";
 import { NotifyModule } from "./notify/notify.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { TelegramModule } from "./telegram/telegram.module";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -24,6 +25,7 @@ const isProd = process.env.NODE_ENV === "production";
     PrismaModule,
     MessagingModule,
     NotifyModule,
+    TelegramModule,
     HealthModule,
     HelloModule,
   ],

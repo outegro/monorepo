@@ -17,6 +17,10 @@ export const envSchema = z.object({
   // Telegram bot (sending + webhook validation). Dormant until provided.
   TELEGRAM_BOT_TOKEN: z.string().trim().optional(),
   TELEGRAM_WEBHOOK_SECRET: z.string().trim().optional(),
+  // Public URL Telegram should call (the id-web BFF forwards to /telegram/webhook here).
+  TELEGRAM_WEBHOOK_URL: z.string().min(1).default("https://id.outegro.com/api/telegram/webhook"),
+  // auth-backend base for /internal/telegram/consume (resolve a link nonce → userId).
+  AUTH_API_BASE: z.string().min(1).default("http://auth-backend:80"),
   // Shared secret for internal service-to-service calls (auth ↔ notifications).
   INTERNAL_API_KEY: z.string().trim().optional(),
 });

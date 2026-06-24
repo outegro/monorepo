@@ -11,6 +11,7 @@ import { OutboxModule } from "./outbox/outbox.module";
 import { PasskeysModule } from "./passkeys/passkeys.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RedisModule } from "./redis/redis.module";
+import { TelegramModule } from "./telegram/telegram.module";
 import { TokensModule } from "./tokens/tokens.module";
 
 const isProd = process.env.NODE_ENV === "production";
@@ -42,6 +43,7 @@ const isTest = process.env.NODE_ENV === "test";
     AuthModule,
     PasskeysModule,
     GoogleModule,
+    TelegramModule,
     HealthModule,
     HelloModule,
   ],

@@ -41,6 +41,9 @@ export const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().trim().optional(),
   GOOGLE_REDIRECT_URI: z.string().min(1).default("https://id.outegro.com/api/auth/google/callback"),
 
+  // Telegram linking. Bot username builds the deep-link; consume is guarded by INTERNAL_API_KEY.
+  TELEGRAM_BOT_USERNAME: z.string().trim().optional(),
+
   // Service-to-service / admin (optional until their endpoints land)
   INTERNAL_API_KEY: z.string().trim().optional(),
   ADMIN_API_KEY: z.string().trim().optional(),

@@ -54,20 +54,38 @@ export default function ProfilePage() {
   const [identities, setIdentities] = useState<Identities | null>(null);
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [telegram, setTelegram] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const [pk, ses, ids] = await Promise.all([
+    const [pk, ses, ids, tg] = await Promise.all([
       fetch("/api/auth/passkeys"),
       fetch("/api/auth/sessions"),
       fetch("/api/auth/identities"),
+      fetch("/api/me/telegram"),
     ]);
     if (pk.ok) setPasskeys(await pk.json());
     if (ses.ok) setSessions(await ses.json());
     if (ids.ok) setIdentities(await ids.json());
+    if (tg.ok) setTelegram((await tg.json()).linked === true);
   }, []);
+
+  async function connectTelegram() {
+    const res = await fetch("/api/auth/telegram/link-token", { method: "POST" });
+    if (res.ok) {
+      const { url } = await res.json();
+      if (url) window.open(url, "_blank");
+    }
+  }
+
+  async function disconnectTelegram() {
+    setBusy(true);
+    await fetch("/api/me/telegram", { method: "DELETE" });
+    await refresh();
+    setBusy(false);
+  }
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -167,6 +185,23 @@ export default function ProfilePage() {
         <div className="flex justify-between py-1">
           <span className="text-muted-foreground">Passkeys</span>
           <span>{identities?.passkeys ?? passkeys.length}</span>
+        </div>
+        <div className="flex justify-between py-1">
+          <span className="text-muted-foreground">Telegram</span>
+          {telegram ? (
+            <button
+              type="button"
+              onClick={disconnectTelegram}
+              disabled={busy}
+              className="text-muted-foreground hover:text-red-500"
+            >
+              connected · disconnect
+            </button>
+          ) : (
+            <button type="button" onClick={connectTelegram} className="text-foreground underline">
+              Connect
+            </button>
+          )}
         </div>
       </section>
 

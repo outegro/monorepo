@@ -59,7 +59,8 @@ export function securityAlertEvent(
   const data: NotifyRequestedData = {
     userId,
     template: "security_alert",
-    channels: ["email"],
+    // Telegram too — DeliveryService resolves the chat id and skips if unlinked.
+    channels: ["email", "telegram"],
     to: { email },
     locale,
     data: { message },
