@@ -43,7 +43,7 @@ export class TelegramService implements OnApplicationBootstrap {
     }
     const nonce = text.split(/\s+/)[1]?.trim();
     if (!nonce) {
-      await this.api.sendMessage(
+      await this.safeSend(
         String(chatId),
         "Open the link from your Outegro profile to connect this chat.",
       );
@@ -51,18 +51,28 @@ export class TelegramService implements OnApplicationBootstrap {
     }
     const userId = await this.consumeNonce(nonce);
     if (!userId) {
-      await this.api.sendMessage(
+      await this.safeSend(
         String(chatId),
         "That link has expired — generate a new one in your Outegro profile.",
       );
       return;
     }
     await this.links.upsert(userId, String(chatId));
-    await this.api.sendMessage(
+    this.logger.log(`telegram linked for user ${userId}`);
+    // Confirmation is best-effort — the link is already saved; a send failure must not
+    // 500 the webhook (Telegram would retry an already-processed update).
+    await this.safeSend(
       String(chatId),
       "✅ Telegram connected. Security alerts will arrive here too.",
     );
-    this.logger.log(`telegram linked for user ${userId}`);
+  }
+
+  private async safeSend(chatId: string, text: string): Promise<void> {
+    try {
+      await this.api.sendMessage(chatId, text);
+    } catch (error) {
+      this.logger.warn(`telegram confirmation send failed for ${chatId}: ${String(error)}`);
+    }
   }
 
   /** Resolve a one-time link nonce → userId via auth-backend (internal, shared key). */
