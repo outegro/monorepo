@@ -143,6 +143,43 @@ export async function proxyAuthed(
 }
 
 /**
+ * Resolve the caller's userId via `/auth/me`, transparently refreshing once on 401 (so a
+ * long-lived poll like Telegram-link status doesn't break when the short access TTL lapses).
+ * Returns the userId plus any rotated token pair, which the route must persist via cookies.
+ */
+export async function authedUserId(
+  req: NextRequest,
+): Promise<{ userId: string | null; refreshed: SessionTokens | null }> {
+  const access = req.cookies.get(serverEnv.accessCookie)?.value;
+  const meWith = (token: string) =>
+    fetch(`${serverEnv.authApiBase}/auth/me`, {
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+
+  let res = access ? await meWith(access) : null;
+  let refreshed: SessionTokens | null = null;
+
+  if (!res || res.status === 401) {
+    const refresh = req.cookies.get(serverEnv.refreshCookie)?.value;
+    if (refresh) {
+      const rr = await callBackend(req, "/auth/refresh", { refreshToken: refresh });
+      const t = rr.data as { accessToken?: string; refreshToken?: string } | null;
+      if (rr.status >= 200 && rr.status < 300 && t?.accessToken && t.refreshToken) {
+        refreshed = { accessToken: t.accessToken, refreshToken: t.refreshToken };
+        res = await meWith(refreshed.accessToken);
+      }
+    }
+  }
+
+  if (!res?.ok) {
+    return { userId: null, refreshed };
+  }
+  const me = (await res.json().catch(() => null)) as { id?: string } | null;
+  return { userId: me?.id ?? null, refreshed };
+}
+
+/**
  * Build a NextResponse from a backend result. 204/205/304 are "null-body" statuses —
  * the Response constructor throws if handed a body, so a 204 from the backend (passkey
  * register, session delete, …) must NOT be wrapped in `NextResponse.json({})` (that crash

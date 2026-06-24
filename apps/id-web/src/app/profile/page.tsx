@@ -142,9 +142,17 @@ export default function ProfilePage() {
     const started = Date.now();
     stopTgPoll();
     tgPoll.current = setInterval(async () => {
-      const linked = await refreshAll();
+      // Pause while the tab is backgrounded (the user is in Telegram); poll ONLY the link
+      // status, not the whole profile — we just need to know when the webhook lands.
+      if (document.hidden) {
+        return;
+      }
+      const r = await fetch("/api/me/telegram");
+      const linked = r.ok && (await r.json().catch(() => ({})))?.linked === true;
       if (linked) {
         stopTgPoll();
+        setTelegram(true);
+        await refreshAll();
         toast.success(t("profile.telegram.linked"));
       } else if (Date.now() - started > 90_000) {
         stopTgPoll();
