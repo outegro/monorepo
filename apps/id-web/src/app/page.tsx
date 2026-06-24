@@ -10,9 +10,9 @@ export default function Home() {
       <p className="max-w-md text-pretty text-muted-foreground">
         One account for every Outegro product.
       </p>
-      <code className="rounded bg-accent px-3 py-1 text-accent-foreground text-sm">
-        hello from id-web
-      </code>
+      <a href="/login" className="rounded-md bg-foreground px-5 py-2.5 font-medium text-background">
+        Sign in
+      </a>
     </main>
   );
 }
