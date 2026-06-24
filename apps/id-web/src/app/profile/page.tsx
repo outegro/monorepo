@@ -156,7 +156,13 @@ export default function ProfilePage() {
         </div>
         <div className="flex justify-between py-1">
           <span className="text-muted-foreground">Google</span>
-          <span>{identities?.google.length ? identities.google.join(", ") : "not linked"}</span>
+          {identities?.google.length ? (
+            <span>{identities.google.join(", ")}</span>
+          ) : (
+            <a href="/api/auth/google/link" className="text-foreground underline">
+              Link account
+            </a>
+          )}
         </div>
         <div className="flex justify-between py-1">
           <span className="text-muted-foreground">Passkeys</span>

@@ -141,6 +141,12 @@ export default function LoginPage() {
           >
             Sign in with a passkey
           </button>
+          <a
+            href="/api/auth/google/start"
+            className="w-full max-w-sm rounded-md border border-border px-4 py-2.5 text-center font-medium hover:bg-accent"
+          >
+            Continue with Google
+          </a>
         </>
       ) : null}
       {error ? <p className="text-red-500 text-sm">{error}</p> : null}

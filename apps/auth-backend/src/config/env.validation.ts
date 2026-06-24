@@ -35,6 +35,12 @@ export const envSchema = z.object({
   COOKIE_DOMAIN: z.string().min(1).default(".outegro.com"),
   REFRESH_COOKIE: z.string().min(1).default("outegro_refresh"),
 
+  // Google OIDC (optional — the feature stays dormant until creds are sealed). The redirect
+  // URI is the id-web BFF callback (browser-facing); auth-backend does the token exchange.
+  GOOGLE_CLIENT_ID: z.string().trim().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().trim().optional(),
+  GOOGLE_REDIRECT_URI: z.string().min(1).default("https://id.outegro.com/api/auth/google/callback"),
+
   // Service-to-service / admin (optional until their endpoints land)
   INTERNAL_API_KEY: z.string().trim().optional(),
   ADMIN_API_KEY: z.string().trim().optional(),

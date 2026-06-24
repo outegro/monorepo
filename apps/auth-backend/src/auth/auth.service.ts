@@ -1,5 +1,6 @@
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import {
+  ConflictException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -201,6 +202,62 @@ export class AuthService {
         const ev = sessionTerminatedEvent(userId, s.id);
         await this.outbox.enqueue(tx, ev.exchange, ev.event);
       }
+    });
+  }
+
+  /**
+   * Google login: resolve the identity (provider=google, subject=sub) → existing user, or
+   * link to an account with the same email, or create one. Requires a verified Google email.
+   * Mirrors email-code: same session machinery + security alert.
+   */
+  async findOrLinkGoogleUser(
+    googleSub: string,
+    email: string,
+    emailVerified: boolean,
+    ctx: ClientContext,
+  ): Promise<SessionTokens> {
+    if (!emailVerified) {
+      throw new UnauthorizedException({ code: "email_not_verified" });
+    }
+    const userId = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.identity.findUnique({
+        where: { identity_provider_subject_uq: { provider: "google", subject: googleSub } },
+        select: { userId: true },
+      });
+      if (existing) {
+        return existing.userId;
+      }
+      let user = await this.users.findByEmail(email, tx);
+      if (!user) {
+        user = await this.users.create(email, tx);
+        const created = userCreatedEvent(user.id, user.email, user.createdAt);
+        await this.outbox.enqueue(tx, created.exchange, created.event);
+      }
+      await tx.identity.create({
+        data: { userId: user.id, provider: "google", subject: googleSub, email },
+      });
+      if (!user.emailVerified) {
+        await tx.user.update({ where: { id: user.id }, data: { emailVerified: true } });
+      }
+      return user.id;
+    });
+    return this.issueSessionForUser(userId, "google", ctx);
+  }
+
+  /** Link a Google identity to the current account (409 if it belongs to someone else). */
+  async linkGoogleIdentity(userId: string, googleSub: string, email: string): Promise<void> {
+    const existing = await this.prisma.identity.findUnique({
+      where: { identity_provider_subject_uq: { provider: "google", subject: googleSub } },
+      select: { userId: true },
+    });
+    if (existing && existing.userId !== userId) {
+      throw new ConflictException({ code: "google_already_linked" });
+    }
+    if (existing) {
+      return;
+    }
+    await this.prisma.identity.create({
+      data: { userId, provider: "google", subject: googleSub, email },
     });
   }
 

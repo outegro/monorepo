@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { LoggerModule } from "nestjs-pino";
 import { AuthModule } from "./auth/auth.module";
 import { validate } from "./config/env.validation";
+import { GoogleModule } from "./google/google.module";
 import { HealthModule } from "./health/health.module";
 import { HelloModule } from "./hello/hello.module";
 import { MessagingModule } from "./messaging/rabbitmq.module";
@@ -40,6 +41,7 @@ const isTest = process.env.NODE_ENV === "test";
     OutboxModule,
     AuthModule,
     PasskeysModule,
+    GoogleModule,
     HealthModule,
     HelloModule,
   ],
