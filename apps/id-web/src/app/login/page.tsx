@@ -3,21 +3,25 @@
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
+import { GoogleIcon, PasskeyIcon } from "@/components/icons";
+import { TopBar } from "@/components/top-bar";
+import { Button } from "@/components/ui";
+import { useI18n } from "@/lib/i18n";
 
 type Step = "email" | "code";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function requestCode(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    setError(null);
     const res = await fetch("/api/auth/request", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -27,14 +31,13 @@ export default function LoginPage() {
     if (res.ok) {
       setStep("code");
     } else {
-      setError("Could not send the code. Check the address and try again.");
+      toast.error(t("login.err.send"));
     }
   }
 
   async function verifyCode(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    setError(null);
     const res = await fetch("/api/auth/verify", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -44,18 +47,15 @@ export default function LoginPage() {
     if (res.ok) {
       router.push("/profile");
     } else {
-      setError("Invalid or expired code.");
+      toast.error(t("login.err.code"));
     }
   }
 
   async function passkeyLogin() {
     setBusy(true);
-    setError(null);
     try {
       const optRes = await fetch("/api/auth/passkeys/authentication/options", { method: "POST" });
-      if (!optRes.ok) {
-        throw new Error("options");
-      }
+      if (!optRes.ok) throw new Error("options");
       const { challengeId, options } = await optRes.json();
       const response = await startAuthentication({ optionsJSON: options });
       const verifyRes = await fetch("/api/auth/passkeys/authentication/verify", {
@@ -66,90 +66,92 @@ export default function LoginPage() {
       if (verifyRes.ok) {
         router.push("/profile");
       } else {
-        setError("Passkey sign-in failed.");
+        toast.error(t("login.err.passkey"));
       }
-    } catch {
-      setError("Passkey sign-in was cancelled.");
+    } catch (err) {
+      // A user-cancelled WebAuthn ceremony throws NotAllowedError/AbortError — treat softly.
+      const cancelled = err instanceof Error && /NotAllowed|Abort/.test(err.name);
+      toast.error(cancelled ? t("login.err.passkeyCancel") : t("login.err.passkey"));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6">
-      <h1 className="font-semibold text-3xl tracking-tight">Sign in to Outegro</h1>
-      {step === "email" ? (
-        <form onSubmit={requestCode} className="flex w-full max-w-sm flex-col gap-3">
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="rounded-md border border-border bg-background px-4 py-2.5 outline-none focus:border-foreground"
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-md bg-foreground px-4 py-2.5 font-medium text-background disabled:opacity-50"
-          >
-            {busy ? "Sending…" : "Send code"}
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={verifyCode} className="flex w-full max-w-sm flex-col gap-3">
-          <p className="text-center text-muted-foreground text-sm">
-            We emailed a 6-digit code to <span className="text-foreground">{email}</span>.
-          </p>
-          <input
-            inputMode="numeric"
-            pattern="\d{6}"
-            required
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="123456"
-            className="rounded-md border border-border bg-background px-4 py-2.5 text-center tracking-[0.4em] outline-none focus:border-foreground"
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-md bg-foreground px-4 py-2.5 font-medium text-background disabled:opacity-50"
-          >
-            {busy ? "Verifying…" : "Verify & sign in"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setStep("email")}
-            className="text-muted-foreground text-sm hover:text-foreground"
-          >
-            Use a different email
-          </button>
-        </form>
-      )}
-      {step === "email" ? (
-        <>
-          <div className="flex w-full max-w-sm items-center gap-3 text-muted-foreground text-xs">
-            <span className="h-px flex-1 bg-border" />
-            or
-            <span className="h-px flex-1 bg-border" />
+    <main className="relative flex min-h-dvh items-center justify-center px-6">
+      <TopBar />
+      <div className="w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-foreground font-semibold text-background text-lg">
+            O
           </div>
-          <button
-            type="button"
-            onClick={passkeyLogin}
-            disabled={busy}
-            className="w-full max-w-sm rounded-md border border-border px-4 py-2.5 font-medium hover:bg-accent disabled:opacity-50"
-          >
-            Sign in with a passkey
-          </button>
-          <a
-            href="/api/auth/google/start"
-            className="w-full max-w-sm rounded-md border border-border px-4 py-2.5 text-center font-medium hover:bg-accent"
-          >
-            Continue with Google
-          </a>
-        </>
-      ) : null}
-      {error ? <p className="text-red-500 text-sm">{error}</p> : null}
+          <h1 className="font-semibold text-2xl tracking-tight">{t("login.title")}</h1>
+        </div>
+
+        {step === "email" ? (
+          <form onSubmit={requestCode} className="flex flex-col gap-3">
+            <input
+              type="email"
+              required
+              // biome-ignore lint/a11y/noAutofocus: sign-in form — focusing the sole field is expected UX
+              autoFocus
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t("login.email.placeholder")}
+              className="h-11 rounded-lg border border-border bg-background px-4 text-sm outline-none transition-colors focus:border-foreground"
+            />
+            <Button type="submit" loading={busy}>
+              {busy ? t("login.email.sending") : t("login.email.send")}
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={verifyCode} className="flex flex-col gap-3">
+            <p className="text-center text-muted-foreground text-sm">
+              {t("login.code.sent", { email })}
+            </p>
+            <input
+              inputMode="numeric"
+              pattern="\d{6}"
+              required
+              // biome-ignore lint/a11y/noAutofocus: code step — focusing the code field is expected UX
+              autoFocus
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder={t("login.code.placeholder")}
+              className="h-12 rounded-lg border border-border bg-background text-center text-lg tracking-[0.5em] outline-none transition-colors focus:border-foreground"
+            />
+            <Button type="submit" loading={busy}>
+              {busy ? t("login.code.verifying") : t("login.code.verify")}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setStep("email")}>
+              {t("login.code.changeEmail")}
+            </Button>
+          </form>
+        )}
+
+        {step === "email" ? (
+          <>
+            <div className="my-5 flex items-center gap-3 text-muted-foreground text-xs">
+              <span className="h-px flex-1 bg-border" />
+              {t("login.or")}
+              <span className="h-px flex-1 bg-border" />
+            </div>
+            <div className="flex flex-col gap-3">
+              <Button variant="outline" onClick={passkeyLogin} disabled={busy}>
+                <PasskeyIcon />
+                {t("login.passkey")}
+              </Button>
+              <a
+                href="/api/auth/google/start"
+                className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 font-medium text-sm transition-colors hover:bg-accent"
+              >
+                <GoogleIcon />
+                {t("login.google")}
+              </a>
+            </div>
+          </>
+        ) : null}
+      </div>
     </main>
   );
 }

@@ -17,7 +17,13 @@ export interface BackendResult {
  */
 function forwardedHeaders(req: NextRequest): Record<string, string> {
   const out: Record<string, string> = { "content-type": "application/json" };
-  for (const h of ["user-agent", "cf-connecting-ip", "cf-ipcountry", "x-forwarded-for"]) {
+  for (const h of [
+    "user-agent",
+    "cf-connecting-ip",
+    "cf-ipcountry",
+    "cf-ipcity",
+    "x-forwarded-for",
+  ]) {
     const v = req.headers.get(h);
     if (v) {
       out[h] = v;
@@ -127,13 +133,26 @@ export async function proxyAuthed(
     }
   }
 
-  const res = NextResponse.json(result.data ?? {}, { status: result.status });
+  const res = jsonResponse(result);
   if (refreshed) {
     setSessionCookies(res, refreshed);
   } else if (result.status === 401) {
     clearSessionCookies(res);
   }
   return res;
+}
+
+/**
+ * Build a NextResponse from a backend result. 204/205/304 are "null-body" statuses —
+ * the Response constructor throws if handed a body, so a 204 from the backend (passkey
+ * register, session delete, …) must NOT be wrapped in `NextResponse.json({})` (that crash
+ * surfaced to users as "Could not add the passkey" even though the backend had stored it).
+ */
+export function jsonResponse(result: BackendResult): NextResponse {
+  if (result.status === 204 || result.status === 205 || result.status === 304) {
+    return new NextResponse(null, { status: result.status });
+  }
+  return NextResponse.json(result.data ?? {}, { status: result.status });
 }
 
 const cookieBase = {

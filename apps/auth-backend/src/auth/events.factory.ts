@@ -42,7 +42,9 @@ export function loginCodeEvent(
   const data: NotifyRequestedData = {
     userId,
     template: "login_code",
-    channels: ["email"],
+    // Telegram too — DeliveryService resolves the chat id and skips when unlinked, so a
+    // linked user gets the code in both places (and is covered if email is slow/filtered).
+    channels: ["email", "telegram"],
     to: { email },
     locale,
     data: { code },

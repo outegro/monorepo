@@ -1,18 +1,15 @@
-export default function Home() {
-  return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
-      <span className="rounded-full border border-border px-4 py-1 text-sm text-muted-foreground">
-        Outegro ID
-      </span>
-      <h1 className="max-w-2xl text-balance font-semibold text-4xl tracking-tight sm:text-5xl">
-        Sign in to Outegro
-      </h1>
-      <p className="max-w-md text-pretty text-muted-foreground">
-        One account for every Outegro product.
-      </p>
-      <a href="/login" className="rounded-md bg-foreground px-5 py-2.5 font-medium text-background">
-        Sign in
-      </a>
-    </main>
-  );
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { serverEnv } from "@/lib/env";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * The ID app has no marketing surface — land users straight where they need to be.
+ * A session cookie → account page, otherwise → the sign-in form (no extra click).
+ */
+export default async function Home() {
+  const jar = await cookies();
+  const signedIn = jar.has(serverEnv.accessCookie) || jar.has(serverEnv.refreshCookie);
+  redirect(signedIn ? "/profile" : "/login");
 }
