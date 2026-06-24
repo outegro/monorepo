@@ -181,6 +181,22 @@ export class AuthService {
     });
   }
 
+  /**
+   * Issue a session for an already-authenticated user (passkey / Google login share the
+   * same session machinery + security alert as email-code).
+   */
+  async issueSessionForUser(
+    userId: string,
+    authMethod: string,
+    ctx: ClientContext,
+  ): Promise<SessionTokens> {
+    const user = await this.users.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException({ code: "user_not_found" });
+    }
+    return this.startSession(user, authMethod, ctx);
+  }
+
   /** Create a session row (+ security alert), then mint refresh + access tokens. */
   private async startSession(
     user: UserRecord,

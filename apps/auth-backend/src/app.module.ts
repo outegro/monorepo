@@ -7,6 +7,7 @@ import { HealthModule } from "./health/health.module";
 import { HelloModule } from "./hello/hello.module";
 import { MessagingModule } from "./messaging/rabbitmq.module";
 import { OutboxModule } from "./outbox/outbox.module";
+import { PasskeysModule } from "./passkeys/passkeys.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RedisModule } from "./redis/redis.module";
 import { TokensModule } from "./tokens/tokens.module";
@@ -38,6 +39,7 @@ const isTest = process.env.NODE_ENV === "test";
     TokensModule,
     OutboxModule,
     AuthModule,
+    PasskeysModule,
     HealthModule,
     HelloModule,
   ],

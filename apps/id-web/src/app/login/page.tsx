@@ -1,5 +1,6 @@
 "use client";
 
+import { startAuthentication } from "@simplewebauthn/browser";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -44,6 +45,33 @@ export default function LoginPage() {
       router.push("/profile");
     } else {
       setError("Invalid or expired code.");
+    }
+  }
+
+  async function passkeyLogin() {
+    setBusy(true);
+    setError(null);
+    try {
+      const optRes = await fetch("/api/auth/passkeys/authentication/options", { method: "POST" });
+      if (!optRes.ok) {
+        throw new Error("options");
+      }
+      const { challengeId, options } = await optRes.json();
+      const response = await startAuthentication({ optionsJSON: options });
+      const verifyRes = await fetch("/api/auth/passkeys/authentication/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ challengeId, response }),
+      });
+      if (verifyRes.ok) {
+        router.push("/profile");
+      } else {
+        setError("Passkey sign-in failed.");
+      }
+    } catch {
+      setError("Passkey sign-in was cancelled.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -98,6 +126,23 @@ export default function LoginPage() {
           </button>
         </form>
       )}
+      {step === "email" ? (
+        <>
+          <div className="flex w-full max-w-sm items-center gap-3 text-muted-foreground text-xs">
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <button
+            type="button"
+            onClick={passkeyLogin}
+            disabled={busy}
+            className="w-full max-w-sm rounded-md border border-border px-4 py-2.5 font-medium hover:bg-accent disabled:opacity-50"
+          >
+            Sign in with a passkey
+          </button>
+        </>
+      ) : null}
       {error ? <p className="text-red-500 text-sm">{error}</p> : null}
     </main>
   );

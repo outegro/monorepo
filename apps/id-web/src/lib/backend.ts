@@ -1,7 +1,7 @@
-import type { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { ACCESS_MAX_AGE, REFRESH_MAX_AGE, serverEnv } from "./env";
 
-interface SessionTokens {
+export interface SessionTokens {
   accessToken: string;
   refreshToken: string;
 }
@@ -72,6 +72,68 @@ export async function callBackendAuthed(path: string, accessToken: string): Prom
     data = text;
   }
   return { status: res.status, data };
+}
+
+/** Method-agnostic backend call carrying the access token as Bearer. */
+async function backendWithBearer(
+  req: NextRequest,
+  path: string,
+  method: "GET" | "POST" | "DELETE",
+  accessToken: string,
+  body?: unknown,
+): Promise<BackendResult> {
+  const res = await fetch(`${serverEnv.authApiBase}${path}`, {
+    method,
+    headers: { ...forwardedHeaders(req), authorization: `Bearer ${accessToken}` },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    cache: "no-store",
+  });
+  const text = await res.text();
+  let data: unknown = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+  return { status: res.status, data };
+}
+
+/**
+ * Proxy an authenticated request, transparently refreshing once on 401 and persisting the
+ * rotated token pair (short access TTL must never surface to the user as a logout). On a
+ * dead session, clears the cookies.
+ */
+export async function proxyAuthed(
+  req: NextRequest,
+  path: string,
+  method: "GET" | "POST" | "DELETE" = "GET",
+  body?: unknown,
+): Promise<NextResponse> {
+  const access = req.cookies.get(serverEnv.accessCookie)?.value;
+  let result: BackendResult = access
+    ? await backendWithBearer(req, path, method, access, body)
+    : { status: 401, data: null };
+  let refreshed: SessionTokens | null = null;
+
+  if (result.status === 401) {
+    const refresh = req.cookies.get(serverEnv.refreshCookie)?.value;
+    if (refresh) {
+      const rr = await callBackend(req, "/auth/refresh", { refreshToken: refresh });
+      const t = rr.data as { accessToken?: string; refreshToken?: string } | null;
+      if (rr.status >= 200 && rr.status < 300 && t?.accessToken && t.refreshToken) {
+        refreshed = { accessToken: t.accessToken, refreshToken: t.refreshToken };
+        result = await backendWithBearer(req, path, method, refreshed.accessToken, body);
+      }
+    }
+  }
+
+  const res = NextResponse.json(result.data ?? {}, { status: result.status });
+  if (refreshed) {
+    setSessionCookies(res, refreshed);
+  } else if (result.status === 401) {
+    clearSessionCookies(res);
+  }
+  return res;
 }
 
 const cookieBase = {

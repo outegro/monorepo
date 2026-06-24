@@ -24,6 +24,12 @@ export const envSchema = z.object({
   REFRESH_TTL: z.coerce.number().default(2_592_000), // 30 days
   CODE_TTL: z.coerce.number().default(600), // 10 min
 
+  // WebAuthn / passkeys. RP_ID is the registrable domain (works across *.outegro.com);
+  // RP_ORIGIN is where the ceremony runs (the id-web BFF origin).
+  WEBAUTHN_RP_ID: z.string().min(1).default("outegro.com"),
+  WEBAUTHN_RP_ORIGIN: z.string().min(1).default("https://id.outegro.com"),
+  WEBAUTHN_RP_NAME: z.string().min(1).default("Outegro"),
+
   // Cookies / origin
   PUBLIC_ORIGIN: z.url().default("https://id.outegro.com"),
   COOKIE_DOMAIN: z.string().min(1).default(".outegro.com"),

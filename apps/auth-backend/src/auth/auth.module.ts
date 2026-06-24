@@ -22,6 +22,6 @@ import { SessionsService } from "./sessions.service";
     EntitlementsService,
     JwtAuthGuard,
   ],
-  exports: [AuthService],
+  exports: [AuthService, UsersRepository],
 })
 export class AuthModule {}
