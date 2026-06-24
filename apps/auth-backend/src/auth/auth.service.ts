@@ -147,6 +147,29 @@ export class AuthService {
     return this.entitlements.list(userId);
   }
 
+  /** The user's configured sign-in methods (for the "how you sign in" profile section). */
+  async getIdentities(userId: string): Promise<{
+    email: string | null;
+    emailVerified: boolean;
+    google: string[];
+    passkeys: number;
+  }> {
+    const [user, identities, passkeys] = await Promise.all([
+      this.users.findById(userId),
+      this.prisma.identity.findMany({
+        where: { userId, provider: "google" },
+        select: { email: true },
+      }),
+      this.prisma.webauthnCredential.count({ where: { userId } }),
+    ]);
+    return {
+      email: user?.email ?? null,
+      emailVerified: user?.emailVerified ?? false,
+      google: identities.map((i) => i.email).filter((e): e is string => e !== null),
+      passkeys,
+    };
+  }
+
   /** User-initiated termination of one of their own sessions. */
   async terminateSession(userId: string, sessionId: string): Promise<void> {
     const session = await this.sessions.findById(sessionId);

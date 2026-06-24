@@ -106,6 +106,12 @@ export class AuthController {
     return this.auth.getEntitlements(user.userId);
   }
 
+  @Get("identities")
+  @UseGuards(JwtAuthGuard)
+  identities(@CurrentUser() user: AuthUser) {
+    return this.auth.getIdentities(user.userId);
+  }
+
   private async limit(action: string, id: string, max: number, windowSec: number): Promise<void> {
     const { allowed, retryAfter } = await this.rateLimit.hit(action, id, max, windowSec);
     if (!allowed) {
