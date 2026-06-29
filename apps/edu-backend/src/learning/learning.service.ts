@@ -1,8 +1,10 @@
+import { randomUUID } from "node:crypto";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { CatalogRepository } from "../catalog/catalog.repository";
 import { LlmService } from "../llm/llm.service";
 import { NotifyService } from "../notify/notify.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { RedisService } from "../redis/redis.service";
 import type { VocabAdd } from "./learning.contracts";
 
 interface VocabItem {
@@ -21,6 +23,23 @@ export interface QuizQuestion {
   options: string[];
   answerIndex: number;
 }
+/** Sent to the browser — same as QuizQuestion but WITHOUT the answer. */
+export interface PublicQuizQuestion {
+  question: string;
+  options: string[];
+}
+export interface QuizGenerated {
+  quizId: string;
+  questions: PublicQuizQuestion[];
+  llm: boolean;
+}
+export interface QuizResult {
+  score: number;
+  total: number;
+  results: Array<{ correct: boolean; answerIndex: number }>;
+}
+
+const QUIZ_TTL_SECONDS = 1800; // 30 min to finish a generated quiz
 
 /** Learning interactions: AI homework grading, AI Q&A, quiz trainer, personal vocabulary. */
 @Injectable()
@@ -30,6 +49,7 @@ export class LearningService {
     private readonly catalog: CatalogRepository,
     private readonly llm: LlmService,
     private readonly notify: NotifyService,
+    private readonly redis: RedisService,
   ) {}
 
   private async chapterOrThrow(id: string) {
@@ -54,22 +74,25 @@ export class LearningService {
         score?: number;
         corrections?: Array<{ wrong: string; right: string; why: string }>;
         feedback?: string;
-      }>([
-        {
-          role: "system",
-          content:
-            "Ты — внимательный преподаватель корейского языка. Проверь домашнее задание ученика по уроку. " +
-            "Объясни ошибки доброжелательно, но честно. Отвечай на русском. " +
-            'Верни ТОЛЬКО JSON: {"score": <целое 0-100>, "corrections": [{"wrong":"...","right":"...","why":"..."}], "feedback":"<2-4 предложения>"}.',
-        },
-        {
-          role: "user",
-          content:
-            `Урок: ${chapter.title}\n\nМатериал урока:\n${chapter.material}\n\n` +
-            `Задание: ${chapter.homeworkPrompt ?? "(свободный ответ по теме урока)"}\n\n` +
-            `Ответ ученика:\n${answer}`,
-        },
-      ]);
+      }>(
+        [
+          {
+            role: "system",
+            content:
+              "Ты — внимательный преподаватель корейского языка. Проверь домашнее задание ученика по уроку. " +
+              "Объясни ошибки доброжелательно, но честно. Отвечай на русском. " +
+              'Верни ТОЛЬКО JSON: {"score": <целое 0-100>, "corrections": [{"wrong":"...","right":"...","why":"..."}], "feedback":"<2-4 предложения>"}.',
+          },
+          {
+            role: "user",
+            content:
+              `Урок: ${chapter.title}\n\nМатериал урока:\n${chapter.material}\n\n` +
+              `Задание: ${chapter.homeworkPrompt ?? "(свободный ответ по теме урока)"}\n\n` +
+              `Ответ ученика:\n${answer}`,
+          },
+        ],
+        { operation: "homework" },
+      );
       result = {
         score: typeof parsed?.score === "number" ? parsed.score : null,
         corrections: Array.isArray(parsed?.corrections) ? parsed.corrections : [],
@@ -113,48 +136,94 @@ export class LearningService {
     if (!this.llm.enabled) {
       return { answer: "AI-ассистент появится, когда будет подключён ключ модели.", llm: false };
     }
-    const answer = await this.llm.chat([
-      {
-        role: "system",
-        content:
-          "Ты — помощник-преподаватель корейского. Кратко и понятно ответь на вопрос ученика " +
-          "по этому уроку на русском, при необходимости приводя примеры на корейском.",
-      },
-      {
-        role: "user",
-        content: `Урок: ${chapter.title}\n\nМатериал:\n${chapter.material}\n\nВопрос: ${question}`,
-      },
-    ]);
-    return { answer, llm: true };
-  }
-
-  /** Generate a fresh practice quiz. Falls back to a vocab-derived quiz without the LLM. */
-  async quiz(chapterId: string): Promise<{ questions: QuizQuestion[]; llm: boolean }> {
-    const chapter = await this.chapterOrThrow(chapterId);
-    const vocab = (chapter.vocab as unknown as VocabItem[]) ?? [];
-
-    if (this.llm.enabled) {
-      const parsed = await this.llm.chatJson<{ questions?: QuizQuestion[] }>([
+    const answer = await this.llm.chat(
+      [
         {
           role: "system",
           content:
-            "Сгенерируй 5 разных тестовых вопросов с выбором ответа для тренировки лексики этого урока корейского. " +
-            "Каждый раз делай новый вариант. Верни ТОЛЬКО JSON: " +
-            '{"questions":[{"question":"...","options":["...","...","...","..."],"answerIndex":<0-3>}]}.',
+            "Ты — помощник-преподаватель корейского. Кратко и понятно ответь на вопрос ученика " +
+            "по этому уроку на русском, при необходимости приводя примеры на корейском.",
         },
         {
           role: "user",
-          content: `Урок: ${chapter.title}\nСлова: ${JSON.stringify(vocab)}\nМатериал:\n${chapter.material}`,
+          content: `Урок: ${chapter.title}\n\nМатериал:\n${chapter.material}\n\nВопрос: ${question}`,
         },
-      ]);
-      const questions = (parsed?.questions ?? []).filter(
-        (q) => q && Array.isArray(q.options) && q.options.length >= 2,
+      ],
+      { operation: "ask", maxTokens: 1500 },
+    );
+    return { answer, llm: true };
+  }
+
+  /**
+   * Generate a fresh practice quiz. Answers are stored in Redis (`edu:quiz:<id>`) and stripped
+   * from the response so the browser can't read the correct option — grading happens in checkQuiz.
+   * Falls back to a vocab-derived quiz without the LLM.
+   */
+  async quiz(chapterId: string): Promise<QuizGenerated> {
+    const chapter = await this.chapterOrThrow(chapterId);
+    const vocab = (chapter.vocab as unknown as VocabItem[]) ?? [];
+
+    let questions: QuizQuestion[] = [];
+    let llm = false;
+    if (this.llm.enabled) {
+      const parsed = await this.llm.chatJson<{ questions?: QuizQuestion[] }>(
+        [
+          {
+            role: "system",
+            content:
+              "Сгенерируй 5 разных тестовых вопросов с выбором ответа для тренировки лексики этого урока корейского. " +
+              "Каждый раз делай новый вариант. Верни ТОЛЬКО JSON: " +
+              '{"questions":[{"question":"...","options":["...","...","...","..."],"answerIndex":<0-3>}]}.',
+          },
+          {
+            role: "user",
+            content: `Урок: ${chapter.title}\nСлова: ${JSON.stringify(vocab)}\nМатериал:\n${chapter.material}`,
+          },
+        ],
+        { operation: "quiz", maxTokens: 2500 },
       );
-      if (questions.length > 0) {
-        return { questions, llm: true };
-      }
+      questions = (parsed?.questions ?? []).filter(
+        (q) =>
+          q &&
+          Array.isArray(q.options) &&
+          q.options.length >= 2 &&
+          Number.isInteger(q.answerIndex) &&
+          q.answerIndex >= 0 &&
+          q.answerIndex < q.options.length,
+      );
+      llm = questions.length > 0;
     }
-    return { questions: this.vocabQuiz(vocab), llm: false };
+    if (questions.length === 0) {
+      questions = this.vocabQuiz(vocab);
+    }
+
+    const quizId = randomUUID();
+    // Persist the full questions (with answers) server-side, keyed by quizId.
+    await this.redis.set(
+      `edu:quiz:${quizId}`,
+      JSON.stringify({ chapterId, questions }),
+      "EX",
+      QUIZ_TTL_SECONDS,
+    );
+    return {
+      quizId,
+      questions: questions.map((q) => ({ question: q.question, options: q.options })),
+      llm,
+    };
+  }
+
+  /** Grade a submitted quiz against the answer key stored in Redis. */
+  async checkQuiz(quizId: string, answers: number[]): Promise<QuizResult> {
+    const raw = await this.redis.get(`edu:quiz:${quizId}`);
+    if (!raw) {
+      throw new NotFoundException({ code: "quiz_expired" });
+    }
+    const { questions } = JSON.parse(raw) as { questions: QuizQuestion[] };
+    const results = questions.map((q, i) => ({
+      answerIndex: q.answerIndex,
+      correct: answers[i] === q.answerIndex,
+    }));
+    return { score: results.filter((r) => r.correct).length, total: questions.length, results };
   }
 
   /** Deterministic-but-shuffled quiz from the chapter's built-in vocabulary. */

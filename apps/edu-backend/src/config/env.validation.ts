@@ -12,6 +12,8 @@ export const envSchema = z.object({
   // Stores
   DATABASE_URL: z.url(),
   RABBITMQ_URL: z.string().min(1).default("amqp://guest:guest@localhost:5672"),
+  // Holds generated-quiz answer keys (server-side grading; answers never sent to client).
+  REDIS_URL: z.string().min(1).default("redis://localhost:6379"),
 
   // Auth: verify access tokens against auth-backend's JWKS (in-cluster). Stateless — no
   // Redis; near-real-time revocation is handled at the BFF / by the short access TTL.

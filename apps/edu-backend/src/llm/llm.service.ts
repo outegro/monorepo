@@ -1,10 +1,22 @@
 import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Env } from "../config/env.validation";
+import { llmDuration, llmRequests, llmTokens } from "../metrics/metrics";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
+}
+
+export type LlmOperation = "homework" | "ask" | "quiz" | "other";
+
+export interface ChatOpts {
+  json?: boolean;
+  temperature?: number;
+  /** Per-call cap. Smaller = faster/cheaper; reasoning calls need more headroom. */
+  maxTokens?: number;
+  /** Labels the Prometheus metrics + Grafana dashboard. */
+  operation?: LlmOperation;
 }
 
 /**
@@ -32,11 +44,15 @@ export class LlmService {
     return Boolean(this.apiKey);
   }
 
-  /** Raw completion → assistant text (reasoning <think> blocks stripped). */
-  async chat(messages: ChatMessage[], opts: { json?: boolean; temperature?: number } = {}) {
+  /** Raw completion → assistant text (reasoning <think> blocks stripped). Metered. */
+  async chat(messages: ChatMessage[], opts: ChatOpts = {}) {
     if (!this.apiKey) {
       throw new ServiceUnavailableException({ code: "llm_disabled" });
     }
+    const operation = opts.operation ?? "other";
+    const labels = { operation, model: this.model };
+    const done = llmDuration.startTimer(labels);
+
     let res: Response;
     try {
       res = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -49,28 +65,53 @@ export class LlmService {
           model: this.model,
           messages,
           temperature: opts.temperature ?? 0.4,
-          max_tokens: this.maxTokens,
+          max_tokens: opts.maxTokens ?? this.maxTokens,
           ...(opts.json ? { response_format: { type: "json_object" } } : {}),
         }),
       });
     } catch (error) {
+      done();
+      llmRequests.inc({ ...labels, outcome: "unreachable" });
       this.logger.error(`llm request failed: ${String(error)}`);
       throw new ServiceUnavailableException({ code: "llm_unreachable" });
     }
     if (!res.ok) {
+      done();
+      llmRequests.inc({ ...labels, outcome: "error" });
       this.logger.error(`llm ${res.status}: ${(await res.text()).slice(0, 300)}`);
       throw new ServiceUnavailableException({ code: "llm_error" });
     }
     const data = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        completion_tokens_details?: { reasoning_tokens?: number };
+      };
     };
+    const seconds = done();
+    llmRequests.inc({ ...labels, outcome: "success" });
+    const u = data.usage;
+    if (u) {
+      if (u.prompt_tokens) llmTokens.inc({ ...labels, kind: "prompt" }, u.prompt_tokens);
+      if (u.completion_tokens)
+        llmTokens.inc({ ...labels, kind: "completion" }, u.completion_tokens);
+      const reasoning = u.completion_tokens_details?.reasoning_tokens;
+      if (reasoning) llmTokens.inc({ ...labels, kind: "reasoning" }, reasoning);
+    }
+    // One structured-ish line per call → greppable in Loki/Grafana for per-request debugging.
+    this.logger.log(
+      `llm ${operation} ok ${seconds.toFixed(1)}s model=${this.model} ` +
+        `prompt=${u?.prompt_tokens ?? 0} completion=${u?.completion_tokens ?? 0} ` +
+        `reasoning=${u?.completion_tokens_details?.reasoning_tokens ?? 0}`,
+    );
     const raw = data.choices?.[0]?.message?.content ?? "";
     return raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   }
 
   /** Completion expected to be JSON; returns parsed object or null on parse failure. */
-  async chatJson<T = unknown>(messages: ChatMessage[]): Promise<T | null> {
-    const text = await this.chat(messages, { json: true, temperature: 0.3 });
+  async chatJson<T = unknown>(messages: ChatMessage[], opts: ChatOpts = {}): Promise<T | null> {
+    const text = await this.chat(messages, { json: true, temperature: 0.3, ...opts });
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) {
       return null;

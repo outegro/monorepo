@@ -6,8 +6,10 @@ import { validate } from "./config/env.validation";
 import { HealthModule } from "./health/health.module";
 import { LearningModule } from "./learning/learning.module";
 import { LlmModule } from "./llm/llm.module";
+import { MetricsModule } from "./metrics/metrics.module";
 import { NotifyModule } from "./notify/notify.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { RedisModule } from "./redis/redis.module";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -23,11 +25,13 @@ const isProd = process.env.NODE_ENV === "production";
       },
     }),
     PrismaModule,
+    RedisModule,
     LlmModule,
     NotifyModule,
     CatalogModule,
     LearningModule,
     HealthModule,
+    MetricsModule,
   ],
 })
 export class AppModule {}

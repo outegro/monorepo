@@ -10,7 +10,13 @@ export interface Me {
   isAdmin: boolean;
 }
 
-const ID_LOGIN = "https://id.outegro.com/login";
+const ID_ORIGIN = "https://id.outegro.com";
+
+/** Send the user to Outegro ID, asking it to return to the current edu page after sign-in. */
+function goToLogin() {
+  const next = typeof window !== "undefined" ? window.location.href : "https://edu.outegro.com/";
+  window.location.href = `${ID_ORIGIN}/login?next=${encodeURIComponent(next)}`;
+}
 
 /** App header: brand + nav (+ Admin for staff). */
 function Header({ me }: { me: Me }) {
@@ -54,9 +60,7 @@ function LoginGate() {
       <p className="max-w-sm text-muted-foreground">
         Изучайте корейский: уроки, AI-проверка домашних заданий, словарь и тренажёр.
       </p>
-      <a href={ID_LOGIN}>
-        <Button>Войти через Outegro ID</Button>
-      </a>
+      <Button onClick={goToLogin}>Войти через Outegro ID</Button>
     </main>
   );
 }

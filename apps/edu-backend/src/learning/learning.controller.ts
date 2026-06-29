@@ -7,6 +7,8 @@ import {
   askSchema,
   type HomeworkSubmit,
   homeworkSubmitSchema,
+  type QuizCheck,
+  quizCheckSchema,
   type VocabAdd,
   vocabAddSchema,
 } from "./learning.contracts";
@@ -34,6 +36,14 @@ export class LearningController {
   @Get("chapters/:id/quiz")
   quiz(@Param("id") id: string) {
     return this.learning.quiz(id);
+  }
+
+  @Post("quiz/:quizId/check")
+  checkQuiz(
+    @Param("quizId") quizId: string,
+    @Body(new ZodValidationPipe(quizCheckSchema)) body: QuizCheck,
+  ) {
+    return this.learning.checkQuiz(quizId, body.answers);
   }
 
   @Post("chapters/:id/vocab")

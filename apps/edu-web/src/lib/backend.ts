@@ -75,10 +75,13 @@ async function callEdu(
   accessToken: string,
   body?: unknown,
 ): Promise<BackendResult> {
+  // Omit the body entirely when there's nothing to send. Sending JSON.stringify(null)
+  // ("null") makes edu-backend's strict JSON body-parser reject the request with 400
+  // ("null is not valid JSON") — that broke bodyless POSTs (complete-lesson, add vocab).
   const res = await fetch(`${serverEnv.eduApiBase}${path}`, {
     method,
     headers: { ...forwardedHeaders(req), authorization: `Bearer ${accessToken}` },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    ...(body != null ? { body: JSON.stringify(body) } : {}),
     cache: "no-store",
   });
   return { status: res.status, data: await readJson(res) };

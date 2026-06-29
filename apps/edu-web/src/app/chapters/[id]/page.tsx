@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Markdown } from "@/components/markdown";
 import { Shell } from "@/components/shell";
 import { Button, Card } from "@/components/ui";
 
@@ -28,31 +29,6 @@ interface Feedback {
   corrections: Array<{ wrong: string; right: string; why: string }>;
   feedback: string;
   llm: boolean;
-}
-
-/** Tiny markdown: # headings, - bullets, blank → paragraph break. */
-function Markdown({ text }: { text: string }) {
-  return (
-    <div className="flex flex-col gap-1.5 text-sm leading-relaxed">
-      {text.split("\n").map((line, i) => {
-        const key = `${i}-${line.slice(0, 8)}`;
-        if (line.startsWith("# "))
-          return (
-            <h3 key={key} className="mt-2 font-semibold text-base">
-              {line.slice(2)}
-            </h3>
-          );
-        if (line.startsWith("- "))
-          return (
-            <p key={key} className="pl-4">
-              • {line.slice(2)}
-            </p>
-          );
-        if (!line.trim()) return <div key={key} className="h-1" />;
-        return <p key={key}>{line}</p>;
-      })}
-    </div>
-  );
 }
 
 export default function ChapterPage({ params }: { params: Promise<{ id: string }> }) {
@@ -175,29 +151,109 @@ function MockTest({ questions }: { questions: MockQ[] }) {
   );
 }
 
+interface QuizQ {
+  question: string;
+  options: string[];
+}
+interface QuizResult {
+  score: number;
+  total: number;
+  results: Array<{ correct: boolean; answerIndex: number }>;
+}
+
+/**
+ * Generated trainer. The server returns questions WITHOUT the correct answers (those live in
+ * Redis) and grades the submission — so the right options can't be read from the payload.
+ */
 function Quiz({ chapterId }: { chapterId: string }) {
-  const [questions, setQuestions] = useState<MockQ[] | null>(null);
+  const [quiz, setQuiz] = useState<{ quizId: string; questions: QuizQ[] } | null>(null);
+  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [result, setResult] = useState<QuizResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
+
   async function gen() {
     setBusy(true);
+    setResult(null);
+    setAnswers({});
     const r = await fetch(`/api/edu/chapters/${chapterId}/quiz`);
     setBusy(false);
     if (r.ok) {
       const data = await r.json();
-      setQuestions(data.questions ?? []);
+      setQuiz({ quizId: data.quizId, questions: data.questions ?? [] });
     } else {
       toast.error("Не удалось сгенерировать тренажёр");
     }
   }
+
+  async function submit() {
+    if (!quiz) return;
+    setChecking(true);
+    const payload = quiz.questions.map((_, i) => answers[i] ?? -1);
+    const r = await fetch(`/api/edu/quiz/${quiz.quizId}/check`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ answers: payload }),
+    });
+    setChecking(false);
+    if (r.ok) {
+      setResult(await r.json());
+    } else {
+      toast.error("Тренажёр устарел — сгенерируйте заново");
+    }
+  }
+
   return (
     <Card>
-      <div className="mb-1 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <h2 className="font-medium">Тренажёр (новый вариант каждый раз)</h2>
         <Button size="sm" variant="outline" loading={busy} onClick={gen}>
-          {questions ? "Ещё вариант" : "Запустить"}
+          {quiz ? "Ещё вариант" : "Запустить"}
         </Button>
       </div>
-      {questions ? <MockTest key={Math.random()} questions={questions} /> : null}
+      {quiz ? (
+        <div className="flex flex-col gap-4">
+          {quiz.questions.map((q, qi) => (
+            <div key={q.question}>
+              <p className="mb-1.5 text-sm">{q.question}</p>
+              <div className="flex flex-wrap gap-2">
+                {q.options.map((opt, oi) => {
+                  const picked = answers[qi] === oi;
+                  const res = result?.results[qi];
+                  const cls = res
+                    ? res.answerIndex === oi
+                      ? "border-green-500 text-green-600"
+                      : picked
+                        ? "border-red-500 text-red-600"
+                        : "border-border"
+                    : picked
+                      ? "border-foreground"
+                      : "border-border";
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => !result && setAnswers((a) => ({ ...a, [qi]: oi }))}
+                      className={`cursor-pointer rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-accent ${cls}`}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          {result ? (
+            <p className="text-sm">
+              Результат: <span className="font-semibold">{result.score}</span> / {result.total}
+            </p>
+          ) : (
+            <Button size="sm" loading={checking} onClick={submit}>
+              Проверить
+            </Button>
+          )}
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -241,7 +297,7 @@ function Homework({ chapterId, prompt }: { chapterId: string; prompt: string | n
           {fb.score !== null ? (
             <p className="mb-1 font-semibold">Оценка: {fb.score} / 100</p>
           ) : null}
-          <p>{fb.feedback}</p>
+          <Markdown text={fb.feedback} />
           {fb.corrections.length > 0 ? (
             <ul className="mt-2 flex flex-col gap-1.5">
               {fb.corrections.map((c) => (
@@ -292,7 +348,11 @@ function AskAi({ chapterId }: { chapterId: string }) {
           Спросить
         </Button>
       </div>
-      {a ? <p className="mt-3 whitespace-pre-wrap text-sm">{a}</p> : null}
+      {a ? (
+        <div className="mt-3 rounded-lg border border-border bg-accent/40 p-3">
+          <Markdown text={a} />
+        </div>
+      ) : null}
     </Card>
   );
 }

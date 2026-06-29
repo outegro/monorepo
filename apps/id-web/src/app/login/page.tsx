@@ -11,6 +11,36 @@ import { useI18n } from "@/lib/i18n";
 
 type Step = "email" | "code";
 
+/**
+ * Where to go after a successful sign-in. A subservice (edu, pay, …) sends users here with
+ * `?next=<its url>`; we only honor absolute https URLs on the outegro.com domain (open-redirect
+ * guard). Anything else → the local profile page.
+ */
+function resolveNext(): string | null {
+  if (typeof window === "undefined") return null;
+  const raw = new URLSearchParams(window.location.search).get("next");
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    const sameSite =
+      url.protocol === "https:" &&
+      (url.hostname === "outegro.com" || url.hostname.endsWith(".outegro.com"));
+    return sameSite ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Navigate to the post-login destination (cross-origin next, else local profile). */
+function landAfterLogin(router: { push: (p: string) => void }) {
+  const next = resolveNext();
+  if (next) {
+    window.location.href = next;
+  } else {
+    router.push("/profile");
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { t } = useI18n();
@@ -45,7 +75,7 @@ export default function LoginPage() {
     });
     setBusy(false);
     if (res.ok) {
-      router.push("/profile");
+      landAfterLogin(router);
     } else {
       toast.error(t("login.err.code"));
     }
@@ -64,7 +94,7 @@ export default function LoginPage() {
         body: JSON.stringify({ challengeId, response }),
       });
       if (verifyRes.ok) {
-        router.push("/profile");
+        landAfterLogin(router);
       } else {
         toast.error(t("login.err.passkey"));
       }
