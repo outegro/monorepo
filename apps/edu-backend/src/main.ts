@@ -1,3 +1,4 @@
+// edu-backend: Korean-learning courses, AI homework checking, vocabulary, quiz trainer.
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
