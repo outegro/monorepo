@@ -4,7 +4,7 @@ import { RoutingKeys } from "../messaging/topology";
 export const notificationChannelSchema = z.enum(["email", "telegram"]);
 export type NotificationChannel = z.infer<typeof notificationChannelSchema>;
 
-export const notifyTemplateSchema = z.enum(["login_code", "security_alert"]);
+export const notifyTemplateSchema = z.enum(["login_code", "security_alert", "edu_notice"]);
 export type NotifyTemplate = z.infer<typeof notifyTemplateSchema>;
 
 export const localeSchema = z.enum(["ru", "en"]);

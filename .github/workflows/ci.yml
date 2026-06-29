@@ -45,6 +45,8 @@ jobs:
           - { app: payments-backend, dockerfile: infra/Dockerfile.nest }
           - { app: id-web, dockerfile: infra/Dockerfile.next }
           - { app: pay-web, dockerfile: infra/Dockerfile.next }
+          - { app: edu-backend, dockerfile: infra/Dockerfile.nest }
+          - { app: edu-web, dockerfile: infra/Dockerfile.next }
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -53,6 +55,7 @@ jobs:
           filters: |
             app:
               - 'apps/${{ matrix.app }}/**'
+              - 'packages/**'
               - 'pnpm-lock.yaml'
               - 'infra/**'
               - 'charts/**'
@@ -140,7 +143,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITOPS_PAT }}
         run: |
           set -euo pipefail
-          for app in landing-web auth-backend notifications-backend payments-backend id-web pay-web; do
+          for app in landing-web auth-backend notifications-backend payments-backend id-web pay-web edu-backend edu-web; do
             file="gitops/values/services/${app}.yaml"
             if [ ! -f "$file" ]; then continue; fi
             # Only bump apps whose image was ACTUALLY built+pushed for this sha. The

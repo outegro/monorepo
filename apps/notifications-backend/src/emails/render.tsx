@@ -41,5 +41,17 @@ export async function renderNotification(
     };
   }
 
+  if (template === "edu_notice") {
+    // Generic subservice notice: { title, message }. Reuses the plain SecurityAlert shell.
+    const title = typeof data.title === "string" && data.title.length > 0 ? data.title : "Outegro";
+    const message = typeof data.message === "string" ? data.message : "";
+    const element = <SecurityAlertEmail message={message} locale={locale} />;
+    return {
+      subject: title,
+      html: await render(element),
+      text: await render(element, { plainText: true }),
+    };
+  }
+
   return null;
 }
