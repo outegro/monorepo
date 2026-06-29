@@ -21,25 +21,25 @@ function goToLogin() {
 /** App header: brand + nav (+ Admin for staff). */
 function Header({ me }: { me: Me }) {
   return (
-    <header className="sticky top-0 z-10 border-border border-b bg-background/80 backdrop-blur">
+    <header className="glass sticky top-0 z-10 rounded-none border-x-0 border-t-0">
       <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-5">
         <Link href="/courses" className="flex items-center gap-2 font-semibold">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-foreground text-background text-sm">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]">
             한
           </span>
           Outegro Korean
         </Link>
         <nav className="flex items-center gap-1 text-sm">
-          <Link href="/courses" className="rounded-md px-3 py-1.5 hover:bg-accent">
+          <Link href="/courses" className="rounded-lg px-3 py-1.5 hover:bg-accent">
             Курсы
           </Link>
-          <Link href="/vocab" className="rounded-md px-3 py-1.5 hover:bg-accent">
+          <Link href="/vocab" className="rounded-lg px-3 py-1.5 hover:bg-accent">
             Словарь
           </Link>
           {me.isAdmin ? (
             <Link
               href="/admin"
-              className="rounded-md px-3 py-1.5 font-medium text-amber-600 hover:bg-accent"
+              className="rounded-lg px-3 py-1.5 font-medium text-vermillion hover:bg-accent"
             >
               Админка
             </Link>
@@ -52,15 +52,19 @@ function Header({ me }: { me: Me }) {
 
 function LoginGate() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-5 px-6 text-center">
-      <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-foreground text-background text-xl">
-        한
-      </span>
-      <h1 className="font-semibold text-2xl tracking-tight">Outegro Korean</h1>
-      <p className="max-w-sm text-muted-foreground">
-        Изучайте корейский: уроки, AI-проверка домашних заданий, словарь и тренажёр.
-      </p>
-      <Button onClick={goToLogin}>Войти через Outegro ID</Button>
+    <main className="flex min-h-dvh flex-col items-center justify-center px-6">
+      <div className="glass-strong flex w-full max-w-sm flex-col items-center gap-5 rounded-3xl p-8 text-center">
+        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]">
+          한
+        </span>
+        <h1 className="font-semibold text-2xl tracking-tight">Outegro Korean</h1>
+        <p className="text-muted-foreground text-sm">
+          Изучайте корейский: уроки, AI-проверка домашних заданий, словарь и тренажёр.
+        </p>
+        <Button className="w-full" onClick={goToLogin}>
+          Войти через Outegro ID
+        </Button>
+      </div>
     </main>
   );
 }

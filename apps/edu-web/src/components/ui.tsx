@@ -14,19 +14,21 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors " +
-  "cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 " +
-  "disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all " +
+  "cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-primary/50 " +
+  "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-foreground text-background hover:bg-foreground/90",
-  outline: "border border-border bg-background hover:bg-accent",
-  ghost: "hover:bg-accent text-muted-foreground hover:text-foreground",
+  // Celadon-jade pill with a glassy top highlight.
+  primary:
+    "bg-primary text-primary-foreground shadow-[0_6px_18px_-6px_var(--celadon),inset_0_1px_0_rgba(255,255,255,0.25)] hover:brightness-105",
+  outline: "glass text-foreground hover:bg-accent",
+  ghost: "text-muted-foreground hover:bg-accent hover:text-foreground",
 };
 
 const sizes: Record<Size, string> = {
-  md: "h-11 px-4 text-sm",
-  sm: "h-8 px-3 text-xs",
+  md: "h-11 px-5 text-sm",
+  sm: "h-8 px-3.5 text-xs",
 };
 
 /** App button — consistent styling, always `cursor-pointer`, optional loading spinner. */
@@ -52,11 +54,7 @@ export function Button({
   );
 }
 
-/** Bordered surface used for the profile sections. */
+/** Liquid-glass surface panel. */
 export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
-  return (
-    <section className={cn("rounded-xl border border-border bg-background p-5", className)}>
-      {children}
-    </section>
-  );
+  return <section className={cn("glass rounded-2xl p-5", className)}>{children}</section>;
 }
