@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Shell } from "@/components/shell";
 import { Card } from "@/components/ui";
+import { useI18n } from "@/lib/i18n";
 
 interface Entry {
   id: string;
@@ -17,6 +18,7 @@ export default function VocabPage() {
 }
 
 function VocabView() {
+  const { t } = useI18n();
   const [items, setItems] = useState<Entry[]>([]);
   const [flipped, setFlipped] = useState<Record<string, boolean>>({});
 
@@ -31,19 +33,17 @@ function VocabView() {
   async function remove(id: string) {
     await fetch(`/api/edu/vocab/${id}`, { method: "DELETE" });
     setItems((xs) => xs.filter((x) => x.id !== id));
-    toast.success("Удалено");
+    toast.success(t("vocab.deleted"));
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="font-semibold text-2xl tracking-tight">Мой словарь</h1>
-        <p className="mt-1 text-muted-foreground text-sm">
-          Нажмите на карточку, чтобы перевернуть. Добавляйте слова из уроков.
-        </p>
+        <h1 className="font-semibold text-2xl tracking-tight">{t("vocab.title")}</h1>
+        <p className="mt-1 text-muted-foreground text-sm">{t("vocab.hint")}</p>
       </div>
       {items.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Словарь пуст. Добавьте слова из уроков.</p>
+        <p className="text-muted-foreground text-sm">{t("vocab.empty")}</p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {items.map((e) => (

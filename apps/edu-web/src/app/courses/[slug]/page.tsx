@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
 import { Card } from "@/components/ui";
+import { useI18n } from "@/lib/i18n";
 
 interface ChapterRef {
   id: string;
@@ -24,6 +25,7 @@ export default function CoursePage({ params }: { params: Promise<{ slug: string 
 }
 
 function CourseView({ slug }: { slug: string }) {
+  const { t } = useI18n();
   const [course, setCourse] = useState<CourseDetail | null>(null);
   useEffect(() => {
     fetch(`/api/edu/courses/${slug}`)
@@ -33,13 +35,13 @@ function CourseView({ slug }: { slug: string }) {
   }, [slug]);
 
   if (!course) {
-    return <p className="text-muted-foreground text-sm">Загрузка…</p>;
+    return <p className="text-muted-foreground text-sm">{t("common.loading")}</p>;
   }
   return (
     <div className="flex flex-col gap-4">
       <div>
         <Link href="/courses" className="text-muted-foreground text-sm hover:text-foreground">
-          ← Все курсы
+          ← {t("course.back")}
         </Link>
         <h1 className="mt-2 font-semibold text-2xl tracking-tight">{course.title}</h1>
         {course.description ? (
@@ -59,7 +61,7 @@ function CourseView({ slug }: { slug: string }) {
               <span>
                 <span className="text-muted-foreground">{ch.index}.</span> {ch.title}
                 {!ch.published ? (
-                  <span className="ml-2 text-amber-600 text-xs">(черновик)</span>
+                  <span className="ml-2 text-amber-600 text-xs">({t("course.draft")})</span>
                 ) : null}
               </span>
               <span className="text-muted-foreground text-sm">{ch.unlocked ? "→" : "🔒"}</span>

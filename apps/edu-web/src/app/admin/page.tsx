@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Shell } from "@/components/shell";
 import { Button, Card } from "@/components/ui";
+import { useI18n } from "@/lib/i18n";
 
 interface Course {
   id: string;
@@ -27,20 +28,16 @@ interface ChapterFull {
 }
 
 export default function AdminPage() {
-  return (
-    <Shell>
-      {(me) =>
-        me.isAdmin ? (
-          <AdminView />
-        ) : (
-          <p className="text-red-500 text-sm">Нужны права администратора.</p>
-        )
-      }
-    </Shell>
-  );
+  return <Shell>{(me) => (me.isAdmin ? <AdminView /> : <NeedAdmin />)}</Shell>;
+}
+
+function NeedAdmin() {
+  const { t } = useI18n();
+  return <p className="text-red-500 text-sm">{t("admin.needAdmin")}</p>;
 }
 
 function AdminView() {
+  const { t } = useI18n();
   const [courses, setCourses] = useState<Course[]>([]);
   const [slug, setSlug] = useState<string>("");
   const [chapters, setChapters] = useState<ChapterRef[]>([]);
@@ -74,10 +71,10 @@ function AdminView() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="font-semibold text-2xl tracking-tight">Админка — уроки</h1>
+      <h1 className="font-semibold text-2xl tracking-tight">{t("admin.title")}</h1>
 
       <div className="flex items-center gap-2">
-        <span className="text-muted-foreground text-sm">Курс:</span>
+        <span className="text-muted-foreground text-sm">{t("admin.course")}</span>
         <select
           value={slug}
           onChange={(e) => {
@@ -96,7 +93,7 @@ function AdminView() {
 
       <Card>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-medium">Главы</h2>
+          <h2 className="font-medium">{t("admin.chapters")}</h2>
           {course ? (
             <Button
               size="sm"
@@ -104,7 +101,7 @@ function AdminView() {
               onClick={() =>
                 setEditing({
                   id: "",
-                  title: "Новый урок",
+                  title: t("admin.newLesson"),
                   index: chapters.length + 1,
                   material: "# Заголовок\n\nТекст урока…",
                   vocab: [],
@@ -114,7 +111,7 @@ function AdminView() {
                 })
               }
             >
-              + Новая глава
+              {t("admin.newChapter")}
             </Button>
           ) : null}
         </div>
@@ -129,7 +126,7 @@ function AdminView() {
                 onClick={() => openChapter(ch.id)}
                 className="cursor-pointer text-muted-foreground hover:text-foreground"
               >
-                редактировать
+                {t("admin.edit")}
               </button>
             </li>
           ))}
@@ -162,6 +159,7 @@ function ChapterEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useI18n();
   const [title, setTitle] = useState(chapter.title);
   const [index, setIndex] = useState(chapter.index);
   const [material, setMaterial] = useState(chapter.material);
@@ -178,7 +176,7 @@ function ChapterEditor({
       vocabParsed = JSON.parse(vocab);
       testParsed = JSON.parse(mockTest);
     } catch {
-      toast.error("Неверный JSON в словаре или тесте");
+      toast.error(t("admin.jsonErr"));
       return;
     }
     const body = {
@@ -203,10 +201,10 @@ function ChapterEditor({
     );
     setBusy(false);
     if (r.ok) {
-      toast.success(isNew ? "Глава создана" : "Сохранено");
+      toast.success(isNew ? t("admin.created") : t("admin.saved"));
       onSaved();
     } else {
-      toast.error("Ошибка сохранения");
+      toast.error(t("admin.saveErr"));
     }
   }
 
@@ -216,20 +214,20 @@ function ChapterEditor({
     const r = await fetch(`/api/edu/admin/chapters/${chapter.id}`, { method: "DELETE" });
     setBusy(false);
     if (r.ok) {
-      toast.success("Удалено");
+      toast.success(t("admin.deleted"));
       onSaved();
     } else {
-      toast.error("Не удалось удалить");
+      toast.error(t("admin.delErr"));
     }
   }
 
   return (
     <Card>
-      <h2 className="mb-3 font-medium">{isNew ? "Новая глава" : "Редактирование главы"}</h2>
+      <h2 className="mb-3 font-medium">{isNew ? t("admin.new") : t("admin.editing")}</h2>
       <div className="flex flex-col gap-3 text-sm">
         <div className="flex gap-3">
           <label className="flex-1">
-            <span className="mb-1 block text-muted-foreground text-xs">Название</span>
+            <span className="mb-1 block text-muted-foreground text-xs">{t("admin.f.title")}</span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -237,7 +235,7 @@ function ChapterEditor({
             />
           </label>
           <label className="w-24">
-            <span className="mb-1 block text-muted-foreground text-xs">Порядок</span>
+            <span className="mb-1 block text-muted-foreground text-xs">{t("admin.f.order")}</span>
             <input
               type="number"
               value={index}
@@ -246,29 +244,17 @@ function ChapterEditor({
             />
           </label>
         </div>
-        <Field label="Материал (markdown)" value={material} onChange={setMaterial} rows={8} />
-        <Field label="Домашнее задание" value={homework} onChange={setHomework} rows={2} />
-        <Field
-          label="Словарь (JSON: [{ko,ru,romanization}])"
-          value={vocab}
-          onChange={setVocab}
-          rows={5}
-          mono
-        />
-        <Field
-          label="Мини-тест (JSON: [{question,options,answerIndex}])"
-          value={mockTest}
-          onChange={setMockTest}
-          rows={5}
-          mono
-        />
+        <Field label={t("admin.f.material")} value={material} onChange={setMaterial} rows={8} />
+        <Field label={t("admin.f.homework")} value={homework} onChange={setHomework} rows={2} />
+        <Field label={t("admin.f.vocab")} value={vocab} onChange={setVocab} rows={5} mono />
+        <Field label={t("admin.f.test")} value={mockTest} onChange={setMockTest} rows={5} mono />
       </div>
       <div className="mt-4 flex items-center gap-2">
         <Button size="sm" loading={busy} onClick={save}>
-          Сохранить
+          {t("admin.save")}
         </Button>
         <Button size="sm" variant="ghost" onClick={onClose}>
-          Отмена
+          {t("admin.cancel")}
         </Button>
         {!isNew ? (
           <button
@@ -276,7 +262,7 @@ function ChapterEditor({
             onClick={remove}
             className="ml-auto cursor-pointer text-red-500 text-xs hover:underline"
           >
-            Удалить главу
+            {t("admin.delete")}
           </button>
         ) : null}
       </div>

@@ -1,0 +1,87 @@
+name: Deploy
+
+# Bump image tags in outegro/gitops AFTER CI succeeds on main. Triggered via
+# workflow_run (not push) so this never attaches as a check to pull requests —
+# the bump only ever happens on a real merge to main (AUDIT_MINIMAX #35: open a
+# PR in gitops, never push to its main directly).
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  bump-gitops:
+    # Only when the CI run that triggered us actually passed.
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read # to check which images were actually pushed for this sha
+    steps:
+      # Skip cleanly (green) when GITOPS_PAT isn't configured — gitops is then
+      # managed manually. With the secret set, the bump PR flow runs as designed.
+      - name: Gate on GITOPS_PAT
+        id: gate
+        env:
+          TOKEN: ${{ secrets.GITOPS_PAT }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GITOPS_PAT not set — skipping gitops bump (managed manually)."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          repository: outegro/gitops
+          token: ${{ secrets.GITOPS_PAT }}
+          path: gitops
+      - name: Log in to GHCR (to verify which images exist)
+        if: steps.gate.outputs.enabled == 'true'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Bump tag and open PR
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          # In a workflow_run context github.sha is the default-branch tip; the sha
+          # the images were built+pushed under is the triggering run's head_sha.
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ secrets.GITOPS_PAT }}
+        run: |
+          set -euo pipefail
+          for app in landing-web auth-backend notifications-backend payments-backend id-web pay-web edu-backend edu-web; do
+            file="gitops/values/services/${app}.yaml"
+            if [ ! -f "$file" ]; then continue; fi
+            # Only bump apps whose image was ACTUALLY built+pushed for this sha. The
+            # images job builds via paths-filter, so a push that touches only one app
+            # produces only that image — bumping the other to a non-existent tag would
+            # break its deploy (ImagePullBackOff).
+            if ! docker manifest inspect "ghcr.io/outegro/monorepo/${app}:${SHA}" >/dev/null 2>&1; then
+              echo "No image ghcr.io/outegro/monorepo/${app}:${SHA} — skipping $app."
+              continue
+            fi
+            # Tag lives at .app.image.tag (outegro-service chart wraps values under
+            # `app:`), NOT .image.tag — the wrong path made `yq -e` exit non-zero and
+            # the bump was silently skipped ("No tag changes"), so no PR was opened.
+            if yq -e ".app.image.tag" "$file" >/dev/null 2>&1; then
+              yq -i ".app.image.tag = strenv(SHA)" "$file"
+              echo "Bumped $app → $SHA"
+            fi
+          done
+          cd gitops
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "ci/bump-${SHA}"
+          git add values/                    # только бампы тегов, не sealed-secrets и пр.
+          if git diff --cached --quiet; then
+            echo "No tag changes to commit."
+            exit 0
+          fi
+          git commit -m "ci: bump image tags to ${SHA}"
+          git push -u origin "ci/bump-${SHA}"
+          gh pr create \
+            --title "ci: bump image tags to ${SHA}" \
+            --body "Automated bump after CI on main (${SHA})." \
+            --base main \
+            --head "ci/bump-${SHA}"

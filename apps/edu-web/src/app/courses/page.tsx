@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
 import { Card } from "@/components/ui";
+import { useI18n } from "@/lib/i18n";
 
 interface Course {
   id: string;
@@ -18,6 +19,7 @@ export default function CoursesPage() {
 }
 
 function CoursesList() {
+  const { t } = useI18n();
   const [courses, setCourses] = useState<Course[]>([]);
   useEffect(() => {
     fetch("/api/edu/courses")
@@ -28,9 +30,9 @@ function CoursesList() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-semibold text-2xl tracking-tight">Курсы корейского</h1>
+      <h1 className="font-semibold text-2xl tracking-tight">{t("courses.title")}</h1>
       {courses.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Курсы скоро появятся.</p>
+        <p className="text-muted-foreground text-sm">{t("courses.empty")}</p>
       ) : (
         courses.map((c) => (
           <Link key={c.id} href={`/courses/${c.slug}`}>

@@ -1,10 +1,12 @@
 import { getTranslations } from "next-intl/server";
+import { LangSwitch } from "@/components/lang-switch";
 
 export default async function HomePage() {
   const t = await getTranslations("hub");
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6 text-center">
+      <LangSwitch className="absolute top-4 right-4" />
       {/* decorative backdrop */}
       <div
         aria-hidden
