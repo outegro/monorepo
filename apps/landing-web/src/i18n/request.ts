@@ -1,9 +1,9 @@
 import { cookies } from "next/headers";
 import { getRequestConfig } from "next-intl/server";
 
-const locales = ["en", "ru"] as const;
+const locales = ["en", "ru", "uz", "tg", "ky"] as const;
 type Locale = (typeof locales)[number];
-const defaultLocale: Locale = "en";
+const defaultLocale: Locale = "ru";
 
 /**
  * Single-locale-aware config (no URL-based routing). Locale is read from a cookie;

@@ -2,10 +2,10 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { useI18n } from "@/lib/i18n";
+import { LOCALES, useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-/** Top-right controls: language toggle (EN/RU) + light/dark theme toggle. */
+/** Top-right controls: language switcher (RU/EN/UZ/TJ/KG) + light/dark theme toggle. */
 export function TopBar() {
   const { locale, setLocale } = useI18n();
   const { resolvedTheme, setTheme } = useTheme();
@@ -15,19 +15,19 @@ export function TopBar() {
   return (
     <div className="absolute top-4 right-4 flex items-center gap-1">
       <div className="flex items-center rounded-lg border border-border p-0.5 text-xs">
-        {(["en", "ru"] as const).map((l) => (
+        {LOCALES.map(({ code, label }) => (
           <button
-            key={l}
+            key={code}
             type="button"
-            onClick={() => setLocale(l)}
+            onClick={() => setLocale(code)}
             className={cn(
-              "cursor-pointer rounded-md px-2 py-1 font-medium uppercase transition-colors",
-              locale === l
+              "cursor-pointer rounded-md px-1.5 py-1 font-medium transition-colors",
+              locale === code
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {l}
+            {label}
           </button>
         ))}
       </div>

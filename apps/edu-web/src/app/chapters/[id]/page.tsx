@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Markdown } from "@/components/markdown";
 import { Shell } from "@/components/shell";
 import { Button, Card } from "@/components/ui";
+import { useI18n } from "@/lib/i18n";
 
 interface VocabItem {
   ko: string;
@@ -37,6 +38,7 @@ export default function ChapterPage({ params }: { params: Promise<{ id: string }
 }
 
 function ChapterView({ id }: { id: string }) {
+  const { t } = useI18n();
   const [ch, setCh] = useState<Chapter | null>(null);
   useEffect(() => {
     fetch(`/api/edu/chapters/${id}`)
@@ -45,14 +47,14 @@ function ChapterView({ id }: { id: string }) {
       .catch(() => setCh(null));
   }, [id]);
 
-  if (!ch) return <p className="text-muted-foreground text-sm">Загрузка…</p>;
+  if (!ch) return <p className="text-muted-foreground text-sm">{t("common.loading")}</p>;
 
   return (
     <div className="flex flex-col gap-5">
       <h1 className="font-semibold text-2xl tracking-tight">{ch.title}</h1>
 
       <Card>
-        <h2 className="mb-2 font-medium">Материал урока</h2>
+        <h2 className="mb-2 font-medium">{t("chapter.material")}</h2>
         <Markdown text={ch.material} />
       </Card>
 
@@ -68,20 +70,21 @@ function ChapterView({ id }: { id: string }) {
 }
 
 function VocabBlock({ chapterId, vocab }: { chapterId: string; vocab: VocabItem[] }) {
+  const { t } = useI18n();
   if (vocab.length === 0) return null;
   async function addAll() {
     const r = await fetch(`/api/edu/chapters/${chapterId}/vocab`, {
       method: "POST",
       headers: { "content-type": "application/json" },
     });
-    toast[r.ok ? "success" : "error"](r.ok ? "Слова добавлены в словарь" : "Не удалось добавить");
+    toast[r.ok ? "success" : "error"](t(r.ok ? "chapter.vocab.added" : "chapter.vocab.addErr"));
   }
   return (
     <Card>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-medium">Словарь урока</h2>
+        <h2 className="font-medium">{t("chapter.vocab")}</h2>
         <Button size="sm" variant="outline" onClick={addAll}>
-          + в мой словарь
+          {t("chapter.vocab.add")}
         </Button>
       </div>
       <ul className="flex flex-col divide-y divide-border/60">
@@ -100,12 +103,13 @@ function VocabBlock({ chapterId, vocab }: { chapterId: string; vocab: VocabItem[
 }
 
 function MockTest({ questions }: { questions: MockQ[] }) {
+  const { t } = useI18n();
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [checked, setChecked] = useState(false);
   const correct = questions.filter((q, i) => answers[i] === q.answerIndex).length;
   return (
     <Card>
-      <h2 className="mb-3 font-medium">Мини-тест</h2>
+      <h2 className="mb-3 font-medium">{t("chapter.mock")}</h2>
       <div className="flex flex-col gap-4">
         {questions.map((q, qi) => (
           <div key={q.question}>
@@ -140,11 +144,12 @@ function MockTest({ questions }: { questions: MockQ[] }) {
       </div>
       {checked ? (
         <p className="mt-3 text-sm">
-          Результат: <span className="font-semibold">{correct}</span> / {questions.length}
+          {t("chapter.result")}: <span className="font-semibold">{correct}</span> /{" "}
+          {questions.length}
         </p>
       ) : (
         <Button className="mt-3" size="sm" onClick={() => setChecked(true)}>
-          Проверить
+          {t("chapter.check")}
         </Button>
       )}
     </Card>
@@ -166,6 +171,7 @@ interface QuizResult {
  * Redis) and grades the submission — so the right options can't be read from the payload.
  */
 function Quiz({ chapterId }: { chapterId: string }) {
+  const { t } = useI18n();
   const [quiz, setQuiz] = useState<{ quizId: string; questions: QuizQ[] } | null>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
@@ -182,7 +188,7 @@ function Quiz({ chapterId }: { chapterId: string }) {
       const data = await r.json();
       setQuiz({ quizId: data.quizId, questions: data.questions ?? [] });
     } else {
-      toast.error("Не удалось сгенерировать тренажёр");
+      toast.error(t("chapter.quiz.err"));
     }
   }
 
@@ -199,16 +205,16 @@ function Quiz({ chapterId }: { chapterId: string }) {
     if (r.ok) {
       setResult(await r.json());
     } else {
-      toast.error("Тренажёр устарел — сгенерируйте заново");
+      toast.error(t("chapter.quiz.stale"));
     }
   }
 
   return (
     <Card>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-medium">Тренажёр (новый вариант каждый раз)</h2>
+        <h2 className="font-medium">{t("chapter.quiz.title")}</h2>
         <Button size="sm" variant="outline" loading={busy} onClick={gen}>
-          {quiz ? "Ещё вариант" : "Запустить"}
+          {quiz ? t("chapter.quiz.more") : t("chapter.quiz.start")}
         </Button>
       </div>
       {quiz ? (
@@ -245,11 +251,12 @@ function Quiz({ chapterId }: { chapterId: string }) {
           ))}
           {result ? (
             <p className="text-sm">
-              Результат: <span className="font-semibold">{result.score}</span> / {result.total}
+              {t("chapter.result")}: <span className="font-semibold">{result.score}</span> /{" "}
+              {result.total}
             </p>
           ) : (
             <Button size="sm" loading={checking} onClick={submit}>
-              Проверить
+              {t("chapter.check")}
             </Button>
           )}
         </div>
@@ -259,6 +266,7 @@ function Quiz({ chapterId }: { chapterId: string }) {
 }
 
 function Homework({ chapterId, prompt }: { chapterId: string; prompt: string | null }) {
+  const { t } = useI18n();
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
   const [fb, setFb] = useState<Feedback | null>(null);
@@ -275,27 +283,29 @@ function Homework({ chapterId, prompt }: { chapterId: string; prompt: string | n
     if (r.ok) {
       setFb(await r.json());
     } else {
-      toast.error("Не удалось проверить ДЗ");
+      toast.error(t("chapter.hw.err"));
     }
   }
   return (
     <Card>
-      <h2 className="mb-1 font-medium">Домашнее задание</h2>
+      <h2 className="mb-1 font-medium">{t("chapter.hw.title")}</h2>
       {prompt ? <p className="mb-3 text-muted-foreground text-sm">{prompt}</p> : null}
       <textarea
         value={answer}
         onChange={(e) => setAnswer(e.target.value)}
         rows={4}
-        placeholder="Ваш ответ…"
+        placeholder={t("chapter.hw.placeholder")}
         className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus:border-foreground"
       />
       <Button className="mt-2" size="sm" loading={busy} onClick={submit}>
-        Проверить с AI
+        {t("chapter.hw.submit")}
       </Button>
       {fb ? (
         <div className="mt-3 rounded-lg border border-border bg-accent/40 p-3 text-sm">
           {fb.score !== null ? (
-            <p className="mb-1 font-semibold">Оценка: {fb.score} / 100</p>
+            <p className="mb-1 font-semibold">
+              {t("chapter.hw.score")}: {fb.score} / 100
+            </p>
           ) : null}
           <Markdown text={fb.feedback} />
           {fb.corrections.length > 0 ? (
@@ -315,6 +325,7 @@ function Homework({ chapterId, prompt }: { chapterId: string; prompt: string | n
 }
 
 function AskAi({ chapterId }: { chapterId: string }) {
+  const { t } = useI18n();
   const [q, setQ] = useState("");
   const [a, setA] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -331,21 +342,21 @@ function AskAi({ chapterId }: { chapterId: string }) {
     if (r.ok) {
       setA((await r.json()).answer);
     } else {
-      toast.error("AI недоступен");
+      toast.error(t("chapter.ask.err"));
     }
   }
   return (
     <Card>
-      <h2 className="mb-2 font-medium">Спросить AI по уроку</h2>
+      <h2 className="mb-2 font-medium">{t("chapter.ask.title")}</h2>
       <div className="flex gap-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Ваш вопрос по теме урока…"
+          placeholder={t("chapter.ask.placeholder")}
           className="h-10 flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-foreground"
         />
         <Button size="sm" loading={busy} onClick={ask}>
-          Спросить
+          {t("chapter.ask.btn")}
         </Button>
       </div>
       {a ? (
@@ -358,19 +369,20 @@ function AskAi({ chapterId }: { chapterId: string }) {
 }
 
 function CompleteButton({ chapterId }: { chapterId: string }) {
+  const { t } = useI18n();
   const [done, setDone] = useState(false);
   async function complete() {
     const r = await fetch(`/api/edu/chapters/${chapterId}/complete`, { method: "POST" });
     if (r.ok) {
       setDone(true);
-      toast.success("Урок пройден — следующий открыт");
+      toast.success(t("chapter.complete.toast"));
     } else {
-      toast.error("Не удалось отметить");
+      toast.error(t("chapter.complete.err"));
     }
   }
   return (
     <Button variant={done ? "outline" : "primary"} onClick={complete} disabled={done}>
-      {done ? "✓ Урок пройден" : "Завершить урок"}
+      {done ? t("chapter.completed") : t("chapter.complete")}
     </Button>
   );
 }
