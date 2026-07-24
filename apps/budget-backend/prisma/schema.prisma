@@ -1,0 +1,150 @@
+// budget-backend schema — multi-tenant port of the standalone "Finance Future" prototype.
+// Stores months, expenses (with paid/pending status), incomes, cumulative cap spends
+// (e.g. food/leisure), base templates, and per-user FX settings. All rows are scoped by
+// `userId` (the auth-backend `sub` claim) — no FK, budget owns its own database.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Per-user key/value settings — FX rates + initial balance.
+model Setting {
+  userId    String   @map("user_id") @db.Uuid
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@id([userId, key])
+  @@map("settings")
+}
+
+// Base expense template — recurring items (rent, subscriptions, utilities).
+// `isCumulative=true` means it's a cap (e.g. food) rather than a per-line item.
+model BaseExpense {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  name         String
+  amount       Decimal  @db.Decimal(14, 4)
+  currency     Currency
+  category     String?
+  group        String?
+  order        Int      @default(0)
+  isActive     Boolean  @default(true) @map("is_active")
+  isCumulative Boolean  @default(false) @map("is_cumulative")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cumulativeSpends MonthCumulativeSpend[]
+
+  @@index([userId])
+  @@map("base_expenses")
+}
+
+// Base income template (recurring income like cashback, deposit %).
+model BaseIncome {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String
+  amount    Decimal  @db.Decimal(14, 4)
+  currency  Currency
+  order     Int      @default(0)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("base_incomes")
+}
+
+// A planned month.
+model Month {
+  id              String                 @id @default(uuid()) @db.Uuid
+  userId          String                 @map("user_id") @db.Uuid
+  year            Int
+  month           Int // 1-12
+  label           String
+  startingBalance Decimal                @map("starting_balance") @db.Decimal(14, 4) // USD (historical/snapshot)
+  notes           String?
+  isClosed        Boolean                @default(false) @map("is_closed")
+  order           Int                    @default(0)
+  expenses        Expense[]
+  incomes         Income[]
+  cumulativeSpend MonthCumulativeSpend[]
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, year, month])
+  @@index([userId, year, month])
+  @@map("months")
+}
+
+// Expense line in a month. status tracks paid/pending for the current month.
+model Expense {
+  id        String        @id @default(uuid()) @db.Uuid
+  monthId   String        @map("month_id") @db.Uuid
+  month     Month         @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  name      String
+  amount    Decimal       @db.Decimal(14, 4)
+  currency  Currency
+  category  String?
+  group     String?
+  isBase    Boolean       @default(false) @map("is_base")
+  status    ExpenseStatus @default(planned)
+  order     Int           @default(0)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([monthId])
+  @@map("expenses")
+}
+
+// Income line in a month.
+model Income {
+  id        String   @id @default(uuid()) @db.Uuid
+  monthId   String   @map("month_id") @db.Uuid
+  month     Month    @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  name      String
+  amount    Decimal  @db.Decimal(14, 4)
+  currency  Currency
+  isBase    Boolean  @default(false) @map("is_base")
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([monthId])
+  @@map("incomes")
+}
+
+// Per-month spending against a cumulative cap. Created on-demand; one row per (month, cap).
+model MonthCumulativeSpend {
+  id            String      @id @default(uuid()) @db.Uuid
+  monthId       String      @map("month_id") @db.Uuid
+  month         Month       @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  baseExpenseId String      @map("base_expense_id") @db.Uuid
+  baseExpense   BaseExpense @relation(fields: [baseExpenseId], references: [id], onDelete: Cascade)
+  spent         Decimal     @db.Decimal(14, 4) // USD
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([monthId, baseExpenseId])
+  @@index([monthId])
+  @@map("month_cumulative_spends")
+}
+
+enum Currency {
+  USD
+  GEL
+  RUB
+  EUR
+}
+
+enum ExpenseStatus {
+  planned
+  paid
+}

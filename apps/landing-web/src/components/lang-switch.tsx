@@ -33,7 +33,7 @@ export function LangSwitch({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex items-center rounded-lg border border-border p-0.5 text-xs",
+        "glass flex items-center rounded-lg p-0.5 text-xs",
         pending && "opacity-60",
         className,
       )}

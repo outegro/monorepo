@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@outegro/ui";
 import { LOCALES, useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -7,9 +8,7 @@ import { cn } from "@/lib/utils";
 function LangSwitch({ className }: { className?: string }) {
   const { locale, setLocale } = useI18n();
   return (
-    <div
-      className={cn("flex items-center rounded-lg border border-border p-0.5 text-xs", className)}
-    >
+    <div className={cn("glass flex items-center rounded-lg p-0.5 text-xs", className)}>
       {LOCALES.map(({ code, label }) => (
         <button
           key={code}
@@ -32,18 +31,14 @@ function LangSwitch({ className }: { className?: string }) {
 export default function Home() {
   const { t } = useI18n();
   return (
-    <main className="relative flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
+    <main className="liquid-canvas relative flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
       <LangSwitch className="absolute top-4 right-4" />
-      <span className="rounded-full border border-border px-4 py-1 text-muted-foreground text-sm">
-        {t("badge")}
-      </span>
+      <Badge className="glass border-none">{t("badge")}</Badge>
       <h1 className="max-w-2xl text-balance font-semibold text-4xl tracking-tight sm:text-5xl">
         {t("title")}
       </h1>
       <p className="max-w-md text-pretty text-muted-foreground">{t("subtitle")}</p>
-      <span className="rounded bg-accent px-3 py-1 text-accent-foreground text-sm">
-        {t("soon")}
-      </span>
+      <span className="glass rounded-full px-4 py-1.5 text-foreground text-sm">{t("soon")}</span>
     </main>
   );
 }

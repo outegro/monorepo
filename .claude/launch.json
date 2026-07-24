@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "id-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@outegro/id-web", "dev"],
+      "port": 3002
+    },
+    {
+      "name": "itmaxxing-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@outegro/itmaxxing-web", "dev"],
+      "port": 3007
+    }
+  ]
+}
