@@ -13,14 +13,13 @@
   "dependencies": {
     "@outegro/ui": "workspace:*",
     "@tanstack/react-query": "^5.101.4",
-    "clsx": "^2.1.1",
+    "lucide-react": "^1.27.0",
     "next": "^16.2.11",
     "next-themes": "^0.4.6",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "socket.io-client": "^4.8.3",
-    "sonner": "^2.0.7",
-    "tailwind-merge": "^3.6.0"
+    "sonner": "^2.0.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

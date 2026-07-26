@@ -1,17 +1,9 @@
 "use client";
 
+import type { Locale } from "@outegro/ui";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-export type Locale = "en" | "ru" | "uz" | "tg" | "ky";
-
-/** Locales offered in the switcher, in display order, with their native short labels. */
-export const LOCALES: { code: Locale; label: string }[] = [
-  { code: "ru", label: "RU" },
-  { code: "en", label: "EN" },
-  { code: "uz", label: "UZ" },
-  { code: "tg", label: "TJ" },
-  { code: "ky", label: "KG" },
-];
+export type { Locale };
 
 /**
  * Lightweight client i18n for the auth screens — a typed dictionary + a switcher, persisted

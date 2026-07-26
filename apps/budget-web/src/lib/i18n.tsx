@@ -1,17 +1,9 @@
 "use client";
 
+import type { Locale } from "@outegro/ui";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-export type Locale = "en" | "ru" | "uz" | "tg" | "ky";
-
-/** Locales offered in the switcher, in display order, with short native labels. */
-export const LOCALES: { code: Locale; label: string }[] = [
-  { code: "ru", label: "RU" },
-  { code: "en", label: "EN" },
-  { code: "uz", label: "UZ" },
-  { code: "tg", label: "TJ" },
-  { code: "ky", label: "KG" },
-];
+export type { Locale };
 
 /**
  * Client i18n for the budget UI — flat typed dictionary + cookie-persisted switcher.

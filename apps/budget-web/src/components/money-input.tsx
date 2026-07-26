@@ -1,7 +1,15 @@
 "use client";
 
+import {
+  cn,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@outegro/ui";
 import { CURRENCIES, type Currency } from "@/lib/fx";
-import { cn } from "@/lib/utils";
 
 interface MoneyInputProps {
   amount: string;
@@ -12,7 +20,7 @@ interface MoneyInputProps {
   placeholder?: string;
 }
 
-/** Amount + currency pair, styled to match the glass form inputs. */
+/** Amount + currency pair. */
 export function MoneyInput({
   amount,
   currency,
@@ -23,26 +31,27 @@ export function MoneyInput({
 }: MoneyInputProps) {
   return (
     <div className={cn("flex gap-1.5", className)}>
-      <input
+      <Input
         type="number"
         inputMode="decimal"
         step="0.01"
         value={amount}
         onChange={(e) => onAmountChange(e.target.value)}
         placeholder={placeholder ?? "0.00"}
-        className="h-9 w-24 rounded-lg border border-border bg-transparent px-2.5 text-sm outline-none focus:border-primary"
+        className="w-24"
       />
-      <select
-        value={currency}
-        onChange={(e) => onCurrencyChange(e.target.value as Currency)}
-        className="h-9 rounded-lg border border-border bg-transparent px-2 text-sm outline-none focus:border-primary"
-      >
-        {CURRENCIES.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
+      <Select value={currency} onValueChange={(v) => onCurrencyChange(v as Currency)}>
+        <SelectTrigger aria-label="Currency">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {CURRENCIES.map((c) => (
+            <SelectItem key={c} value={c}>
+              {c}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

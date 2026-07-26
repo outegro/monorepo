@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "node .next/standalone/apps/landing-web/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "e2e": "playwright test",
     "lint": "biome check ."
   },
@@ -15,11 +15,8 @@
     "@hookform/resolvers": "^5.4.0",
     "@next/third-parties": "^16.2.11",
     "@outegro/ui": "workspace:*",
-    "@radix-ui/react-slot": "^1.3.1",
     "@tanstack/react-query": "^5.101.4",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.26.0",
+    "lucide-react": "^1.27.0",
     "motion": "^12.42.2",
     "next": "^16.2.11",
     "next-intl": "^4.13.4",
@@ -30,7 +27,6 @@
     "react-hook-form": "^7.82.0",
     "server-only": "^0.0.1",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

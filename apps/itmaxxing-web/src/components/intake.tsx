@@ -1,6 +1,16 @@
 "use client";
 
-import { Badge, Button, Card } from "@outegro/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Textarea,
+} from "@outegro/ui";
+import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -58,27 +68,25 @@ export function Intake({ llmEnabled }: { llmEnabled: boolean }) {
             {t("intake.subtitle")}
           </p>
         </div>
-        <Card strong className="flex flex-col gap-3">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={t("intake.placeholder")}
-            rows={12}
-            className="w-full resize-y rounded-xl border border-border bg-transparent p-4 text-sm leading-relaxed outline-none focus:border-primary"
-          />
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground text-xs">
-              {llmEnabled ? `${text.trim().length} ch` : t("intake.disabled")}
-            </span>
-            <Button
-              size="lg"
-              loading={reviewMut.isPending}
-              disabled={!llmEnabled}
-              onClick={runReview}
-            >
-              {reviewMut.isPending ? t("intake.reviewing") : t("intake.submit")}
-            </Button>
-          </div>
+        <Card>
+          <CardContent className="flex flex-col gap-3">
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={t("intake.placeholder")}
+              rows={12}
+              className="resize-y leading-relaxed"
+            />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground text-xs">
+                {llmEnabled ? `${text.trim().length} ch` : t("intake.disabled")}
+              </span>
+              <Button size="lg" disabled={!llmEnabled || reviewMut.isPending} onClick={runReview}>
+                {reviewMut.isPending ? <Loader2Icon className="animate-spin" /> : null}
+                {reviewMut.isPending ? t("intake.reviewing") : t("intake.submit")}
+              </Button>
+            </div>
+          </CardContent>
         </Card>
       </div>
     );
@@ -88,38 +96,44 @@ export function Intake({ llmEnabled }: { llmEnabled: boolean }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={() => setStep("input")}
-          className="cursor-pointer text-muted-foreground text-sm hover:text-foreground"
-        >
+        <Button variant="ghost" size="sm" onClick={() => setStep("input")}>
+          <ArrowLeftIcon />
           {t("review.back")}
-        </button>
-        <Button loading={structureMut.isPending} onClick={accept}>
+        </Button>
+        <Button disabled={structureMut.isPending} onClick={accept}>
+          {structureMut.isPending ? <Loader2Icon className="animate-spin" /> : null}
           {structureMut.isPending ? t("review.structuring") : t("review.accept")}
         </Button>
       </div>
 
       {review?.summary ? (
-        <Card tint="cool" className="text-sm">
-          {review.summary}
+        <Card>
+          <CardContent className="text-sm">{review.summary}</CardContent>
         </Card>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="flex flex-col gap-2">
-          <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-            {t("review.original")}
-          </span>
-          <p className="whitespace-pre-wrap text-muted-foreground text-sm leading-relaxed">
-            {text}
-          </p>
+        <Card>
+          <CardHeader>
+            <CardDescription className="uppercase tracking-wide">
+              {t("review.original")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-wrap text-muted-foreground text-sm leading-relaxed">
+              {text}
+            </p>
+          </CardContent>
         </Card>
-        <Card strong className="flex flex-col gap-2">
-          <span className="font-medium text-primary text-xs uppercase tracking-wide">
-            {t("review.improved")}
-          </span>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed">{review?.improved}</p>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xs uppercase tracking-wide">
+              {t("review.improved")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">{review?.improved}</p>
+          </CardContent>
         </Card>
       </div>
 
@@ -130,32 +144,30 @@ export function Intake({ llmEnabled }: { llmEnabled: boolean }) {
         {review && review.redFlags.length > 0 ? (
           <div className="flex flex-col gap-2">
             {review.redFlags.map((f) => (
-              <Card
-                key={`${f.issue}::${f.where}`}
-                tint="warm"
-                className="flex flex-col gap-1.5 text-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <Badge className="border-none bg-destructive/15 text-destructive">
-                    🚩 {f.issue}
+              <Card key={`${f.issue}::${f.where}`}>
+                <CardContent className="flex flex-col gap-1.5 text-sm">
+                  <Badge variant="destructive" className="w-fit">
+                    {f.issue}
                   </Badge>
-                </div>
-                {f.where ? (
-                  <p className="text-muted-foreground text-xs italic">“{f.where}”</p>
-                ) : null}
-                {f.why ? <p className="text-sm">{f.why}</p> : null}
-                {f.fix ? (
-                  <p className="text-chart-2 text-sm">
-                    <span className="font-medium">→ </span>
-                    {f.fix}
-                  </p>
-                ) : null}
+                  {f.where ? (
+                    <p className="text-muted-foreground text-xs italic">“{f.where}”</p>
+                  ) : null}
+                  {f.why ? <p>{f.why}</p> : null}
+                  {f.fix ? (
+                    <p className="text-muted-foreground">
+                      <span className="font-medium text-foreground">→ </span>
+                      {f.fix}
+                    </p>
+                  ) : null}
+                </CardContent>
               </Card>
             ))}
           </div>
         ) : (
-          <Card tint="green" className="text-sm">
-            {t("review.noflags")}
+          <Card>
+            <CardContent className="text-muted-foreground text-sm">
+              {t("review.noflags")}
+            </CardContent>
           </Card>
         )}
       </div>
