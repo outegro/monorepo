@@ -1,39 +1,33 @@
 "use client";
 
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Separator,
+} from "@outegro/ui";
 import { startAuthentication } from "@simplewebauthn/browser";
+import { FingerprintIcon, Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { GoogleIcon, PasskeyIcon } from "@/components/icons";
+import { GoogleIcon } from "@/components/icons";
 import { TopBar } from "@/components/top-bar";
-import { Button, Card } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
+import { safeNextUrl } from "@/lib/next-url";
 
 type Step = "email" | "code";
 
-/**
- * Where to go after a successful sign-in. A subservice (edu, pay, …) sends users here with
- * `?next=<its url>`; we only honor absolute https URLs on the outegro.com domain (open-redirect
- * guard). Anything else → the local profile page.
- */
-function resolveNext(): string | null {
-  if (typeof window === "undefined") return null;
-  const raw = new URLSearchParams(window.location.search).get("next");
-  if (!raw) return null;
-  try {
-    const url = new URL(raw);
-    const sameSite =
-      url.protocol === "https:" &&
-      (url.hostname === "outegro.com" || url.hostname.endsWith(".outegro.com"));
-    return sameSite ? url.href : null;
-  } catch {
-    return null;
-  }
-}
-
 /** Navigate to the post-login destination (cross-origin next, else local profile). */
 function landAfterLogin(router: { push: (p: string) => void }) {
-  const next = resolveNext();
+  const next =
+    typeof window === "undefined"
+      ? null
+      : safeNextUrl(new URLSearchParams(window.location.search).get("next"));
   if (next) {
     window.location.href = next;
   } else {
@@ -108,79 +102,81 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="liquid-canvas relative flex min-h-dvh items-center justify-center px-6">
+    <main className="relative flex min-h-dvh items-center justify-center px-6">
       <TopBar />
-      <Card strong className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary font-semibold text-primary-foreground text-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-2 flex size-11 items-center justify-center rounded-xl bg-primary font-semibold text-lg text-primary-foreground">
             O
           </div>
-          <h1 className="font-semibold text-2xl tracking-tight">{t("login.title")}</h1>
-        </div>
+          <CardTitle className="text-2xl">{t("login.title")}</CardTitle>
+          {step === "code" ? (
+            <CardDescription>{t("login.code.sent", { email })}</CardDescription>
+          ) : null}
+        </CardHeader>
 
-        {step === "email" ? (
-          <form onSubmit={requestCode} className="flex flex-col gap-3">
-            <input
-              type="email"
-              required
-              // biome-ignore lint/a11y/noAutofocus: sign-in form — focusing the sole field is expected UX
-              autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t("login.email.placeholder")}
-              className="h-11 rounded-lg border border-border bg-background px-4 text-sm outline-none transition-colors focus:border-foreground"
-            />
-            <Button type="submit" loading={busy}>
-              {busy ? t("login.email.sending") : t("login.email.send")}
-            </Button>
-          </form>
-        ) : (
-          <form onSubmit={verifyCode} className="flex flex-col gap-3">
-            <p className="text-center text-muted-foreground text-sm">
-              {t("login.code.sent", { email })}
-            </p>
-            <input
-              inputMode="numeric"
-              pattern="\d{6}"
-              required
-              // biome-ignore lint/a11y/noAutofocus: code step — focusing the code field is expected UX
-              autoFocus
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder={t("login.code.placeholder")}
-              className="h-12 rounded-lg border border-border bg-background text-center text-lg tracking-[0.5em] outline-none transition-colors focus:border-foreground"
-            />
-            <Button type="submit" loading={busy}>
-              {busy ? t("login.code.verifying") : t("login.code.verify")}
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setStep("email")}>
-              {t("login.code.changeEmail")}
-            </Button>
-          </form>
-        )}
-
-        {step === "email" ? (
-          <>
-            <div className="my-5 flex items-center gap-3 text-muted-foreground text-xs">
-              <span className="h-px flex-1 bg-border" />
-              {t("login.or")}
-              <span className="h-px flex-1 bg-border" />
-            </div>
-            <div className="flex flex-col gap-3">
-              <Button variant="outline" onClick={passkeyLogin} disabled={busy}>
-                <PasskeyIcon />
-                {t("login.passkey")}
+        <CardContent className="flex flex-col gap-4">
+          {step === "email" ? (
+            <form onSubmit={requestCode} className="flex flex-col gap-3">
+              <Input
+                type="email"
+                required
+                // biome-ignore lint/a11y/noAutofocus: sign-in form — focusing the sole field is expected UX
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t("login.email.placeholder")}
+              />
+              <Button type="submit" disabled={busy}>
+                {busy ? <Loader2Icon className="animate-spin" /> : null}
+                {busy ? t("login.email.sending") : t("login.email.send")}
               </Button>
-              <a
-                href="/api/auth/google/start"
-                className="glass glass-press inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 font-medium text-sm hover:bg-accent"
-              >
-                <GoogleIcon />
-                {t("login.google")}
-              </a>
-            </div>
-          </>
-        ) : null}
+            </form>
+          ) : (
+            <form onSubmit={verifyCode} className="flex flex-col gap-3">
+              <Input
+                inputMode="numeric"
+                pattern="\d{6}"
+                required
+                // biome-ignore lint/a11y/noAutofocus: code step — focusing the code field is expected UX
+                autoFocus
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder={t("login.code.placeholder")}
+                className="h-12 text-center text-lg tracking-[0.5em]"
+              />
+              <Button type="submit" disabled={busy}>
+                {busy ? <Loader2Icon className="animate-spin" /> : null}
+                {busy ? t("login.code.verifying") : t("login.code.verify")}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setStep("email")}>
+                {t("login.code.changeEmail")}
+              </Button>
+            </form>
+          )}
+
+          {step === "email" ? (
+            <>
+              <div className="flex items-center gap-3 text-muted-foreground text-xs">
+                <Separator className="flex-1" />
+                {t("login.or")}
+                <Separator className="flex-1" />
+              </div>
+              <div className="flex flex-col gap-3">
+                <Button variant="outline" onClick={passkeyLogin} disabled={busy}>
+                  <FingerprintIcon />
+                  {t("login.passkey")}
+                </Button>
+                <Button variant="outline" asChild>
+                  <a href="/api/auth/google/start">
+                    <GoogleIcon />
+                    {t("login.google")}
+                  </a>
+                </Button>
+              </div>
+            </>
+          ) : null}
+        </CardContent>
       </Card>
     </main>
   );

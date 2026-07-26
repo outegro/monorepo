@@ -1,4 +1,8 @@
-/** Inline brand/UI icons (no icon-font dependency). All inherit sizing via props. */
+/**
+ * Multi-colour brand marks only. Everything monochrome comes from lucide-react
+ * (the icon set shadcn ships with) — Google and Telegram are here because their logos
+ * are brand assets, not UI icons, and must keep their official colours.
+ */
 import type { SVGProps } from "react";
 
 export function GoogleIcon(props: SVGProps<SVGSVGElement>) {
@@ -24,28 +28,6 @@ export function GoogleIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-export function PasskeyIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      {...props}
-    >
-      <circle cx="10" cy="8" r="4" />
-      <path d="M10.3 14H8a6 6 0 0 0-6 6" />
-      <circle cx="18" cy="14" r="2.5" />
-      <path d="M18 16.5V22l-1.5-1.5L18 19l1.5 1.5L18 22" />
-    </svg>
-  );
-}
-
 export function TelegramIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" {...props}>
@@ -53,25 +35,6 @@ export function TelegramIcon(props: SVGProps<SVGSVGElement>) {
         fill="#229ED9"
         d="M12 0a12 12 0 1 0 0 24 12 12 0 0 0 0-24Zm5.56 8.2-1.86 8.78c-.14.62-.5.77-1.02.48l-2.82-2.08-1.36 1.31c-.15.15-.28.28-.57.28l.2-2.88 5.23-4.73c.23-.2-.05-.32-.35-.12l-6.46 4.07-2.78-.87c-.6-.19-.62-.6.13-.9l10.87-4.19c.5-.18.94.12.78.94Z"
       />
-    </svg>
-  );
-}
-
-export function Spinner(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-      className="animate-spin"
-      {...props}
-    >
-      <path d="M12 3a9 9 0 1 0 9 9" />
     </svg>
   );
 }

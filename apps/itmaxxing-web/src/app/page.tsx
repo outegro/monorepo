@@ -6,7 +6,7 @@ import { useLoreStatus } from "@/lib/api";
 
 export default function HomePage() {
   return (
-    <main className="liquid-canvas min-h-dvh">
+    <main className="min-h-dvh">
       <Shell>{() => <IntakeView />}</Shell>
     </main>
   );

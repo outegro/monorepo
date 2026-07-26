@@ -1,6 +1,7 @@
 "use client";
 
-import { Button } from "@outegro/ui";
+import { Button, Input } from "@outegro/ui";
+import { Loader2Icon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Currency } from "@/lib/fx";
@@ -38,12 +39,12 @@ export function AddLineInline({ label, onSubmit, onDone }: AddLineInlineProps) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border border-dashed p-2">
-      <input
+    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-dashed p-2">
+      <Input
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder={`${label} — ${t("form.name")}`}
-        className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-transparent px-2.5 text-sm outline-none focus:border-primary"
+        className="min-w-0 flex-1"
       />
       <MoneyInput
         amount={amount}
@@ -51,7 +52,8 @@ export function AddLineInline({ label, onSubmit, onDone }: AddLineInlineProps) {
         onAmountChange={setAmount}
         onCurrencyChange={setCurrency}
       />
-      <Button size="sm" loading={busy} onClick={submit}>
+      <Button size="sm" disabled={busy} onClick={submit}>
+        {busy ? <Loader2Icon className="animate-spin" /> : null}
         {t("common.add")}
       </Button>
     </div>

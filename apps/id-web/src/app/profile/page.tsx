@@ -1,12 +1,23 @@
 "use client";
 
+import {
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Separator,
+  Skeleton,
+} from "@outegro/ui";
 import { startRegistration } from "@simplewebauthn/browser";
+import { CheckIcon, FingerprintIcon, Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { GoogleIcon, PasskeyIcon, TelegramIcon } from "@/components/icons";
+import { GoogleIcon, TelegramIcon } from "@/components/icons";
 import { TopBar } from "@/components/top-bar";
-import { Button, Card } from "@/components/ui";
 import { type TKey, useI18n } from "@/lib/i18n";
 
 interface Me {
@@ -240,158 +251,177 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-dvh items-center justify-center text-muted-foreground text-sm">
-        …
+      <main className="flex min-h-dvh justify-center px-6 py-14">
+        <div className="flex w-full max-w-md flex-col gap-5">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
       </main>
     );
   }
   if (!me) return null;
 
   return (
-    <main className="liquid-canvas relative flex min-h-dvh justify-center px-6 py-14">
+    <main className="relative flex min-h-dvh justify-center px-6 py-14">
       <div className="mx-auto flex w-full max-w-md flex-col gap-5">
         <TopBar />
         <h1 className="font-semibold text-2xl tracking-tight">{t("profile.title")}</h1>
 
         {/* Sign-in methods */}
-        <Card className="text-sm">
-          <h2 className="mb-3 font-medium">{t("profile.signin.title")}</h2>
-          <div className="flex items-center justify-between border-border/60 border-b py-2.5">
-            <span className="text-muted-foreground">{t("profile.email")}</span>
-            <span className="truncate pl-3">
-              {me.email}{" "}
-              {me.emailVerified ? (
-                <span className="text-green-600">✓</span>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("profile.signin.title")}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">{t("profile.email")}</span>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate">{me.email}</span>
+                {me.emailVerified ? (
+                  <CheckIcon className="size-4 shrink-0 text-muted-foreground" />
+                ) : (
+                  <Badge variant="outline">{t("profile.unverified")}</Badge>
+                )}
+              </span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <GoogleIcon width={15} height={15} /> {t("profile.google")}
+              </span>
+              {identities?.google.length ? (
+                <span className="truncate">{identities.google.join(", ")}</span>
               ) : (
-                <span className="text-muted-foreground text-xs">({t("profile.unverified")})</span>
+                <Button variant="link" size="sm" className="h-auto p-0" asChild>
+                  <a href="/api/auth/google/link">{t("profile.google.link")}</a>
+                </Button>
               )}
-            </span>
-          </div>
-          <div className="flex items-center justify-between border-border/60 border-b py-2.5">
-            <span className="flex items-center gap-2 text-muted-foreground">
-              <GoogleIcon width={15} height={15} /> {t("profile.google")}
-            </span>
-            {identities?.google.length ? (
-              <span className="truncate pl-3">{identities.google.join(", ")}</span>
-            ) : (
-              <a href="/api/auth/google/link" className="cursor-pointer font-medium underline">
-                {t("profile.google.link")}
-              </a>
-            )}
-          </div>
-          <div className="flex items-center justify-between border-border/60 border-b py-2.5">
-            <span className="flex items-center gap-2 text-muted-foreground">
-              <PasskeyIcon width={15} height={15} /> {t("profile.passkeys")}
-            </span>
-            <span>{identities?.passkeys ?? passkeys.length}</span>
-          </div>
-          <div className="flex items-center justify-between py-2.5">
-            <span className="flex items-center gap-2 text-muted-foreground">
-              <TelegramIcon width={15} height={15} /> {t("profile.telegram")}
-            </span>
-            {telegram ? (
-              <button
-                type="button"
-                onClick={disconnectTelegram}
-                disabled={busy}
-                className="cursor-pointer font-medium text-muted-foreground transition-colors hover:text-red-500"
-              >
-                {t("profile.telegram.connected")} · {t("profile.telegram.disconnect")}
-              </button>
-            ) : tgPending ? (
-              <span className="text-muted-foreground text-xs">{t("profile.telegram.waiting")}</span>
-            ) : (
-              <button
-                type="button"
-                onClick={connectTelegram}
-                className="cursor-pointer font-medium underline"
-              >
-                {t("profile.telegram.connect")}
-              </button>
-            )}
-          </div>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <FingerprintIcon className="size-4" /> {t("profile.passkeys")}
+              </span>
+              <span>{identities?.passkeys ?? passkeys.length}</span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <TelegramIcon width={15} height={15} /> {t("profile.telegram")}
+              </span>
+              {telegram ? (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-muted-foreground"
+                  onClick={disconnectTelegram}
+                  disabled={busy}
+                >
+                  {t("profile.telegram.connected")} · {t("profile.telegram.disconnect")}
+                </Button>
+              ) : tgPending ? (
+                <span className="text-muted-foreground text-xs">
+                  {t("profile.telegram.waiting")}
+                </span>
+              ) : (
+                <Button variant="link" size="sm" className="h-auto p-0" onClick={connectTelegram}>
+                  {t("profile.telegram.connect")}
+                </Button>
+              )}
+            </div>
+          </CardContent>
         </Card>
 
         {/* Passkeys */}
         <Card>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-medium">{t("profile.passkeys.title")}</h2>
-            <Button size="sm" onClick={addPasskey} loading={busy}>
-              <PasskeyIcon width={14} height={14} />
-              {busy ? t("profile.passkeys.adding") : t("profile.passkeys.add")}
-            </Button>
-          </div>
-          {passkeys.length === 0 ? (
-            <p className="text-muted-foreground text-sm">{t("profile.passkeys.none")}</p>
-          ) : (
-            <ul className="flex flex-col divide-y divide-border/60">
-              {passkeys.map((pk) => (
-                <li key={pk.id} className="flex items-center justify-between py-2 text-sm">
-                  <span>{pk.name ?? pk.deviceType ?? "Passkey"}</span>
-                  <button
-                    type="button"
-                    onClick={() => removePasskey(pk.id)}
-                    disabled={busy}
-                    className="cursor-pointer text-muted-foreground text-xs transition-colors hover:text-red-500"
-                  >
-                    {t("profile.passkeys.remove")}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <CardHeader>
+            <CardTitle>{t("profile.passkeys.title")}</CardTitle>
+            <CardAction>
+              <Button size="sm" onClick={addPasskey} disabled={busy}>
+                {busy ? <Loader2Icon className="animate-spin" /> : <FingerprintIcon />}
+                {busy ? t("profile.passkeys.adding") : t("profile.passkeys.add")}
+              </Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            {passkeys.length === 0 ? (
+              <p className="text-muted-foreground text-sm">{t("profile.passkeys.none")}</p>
+            ) : (
+              <ul className="flex flex-col divide-y">
+                {passkeys.map((pk) => (
+                  <li key={pk.id} className="flex items-center justify-between py-2 text-sm">
+                    <span>{pk.name ?? pk.deviceType ?? "Passkey"}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removePasskey(pk.id)}
+                      disabled={busy}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      {t("profile.passkeys.remove")}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
         </Card>
 
         {/* Sessions */}
         <Card>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-medium">{t("profile.sessions.title")}</h2>
+          <CardHeader>
+            <CardTitle>{t("profile.sessions.title")}</CardTitle>
             {sessions.length > 1 ? (
-              <button
-                type="button"
-                onClick={revokeOthers}
-                disabled={busy}
-                className="cursor-pointer text-muted-foreground text-xs transition-colors hover:text-red-500"
-              >
-                {t("profile.sessions.others")}
-              </button>
+              <CardAction>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={revokeOthers}
+                  disabled={busy}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  {t("profile.sessions.others")}
+                </Button>
+              </CardAction>
             ) : null}
-          </div>
-          <ul className="flex flex-col divide-y divide-border/60">
-            {sessions.map((s) => {
-              const loc = locationLabel(s);
-              return (
-                <li key={s.id} className="flex items-start justify-between py-2.5 text-sm">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{deviceLabel(s.userAgent)}</span>
-                      {s.current ? (
-                        <span className="rounded bg-green-500/15 px-1.5 py-0.5 text-green-600 text-xs">
-                          {t("profile.sessions.thisDevice")}
-                        </span>
-                      ) : null}
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-col divide-y">
+              {sessions.map((s) => {
+                const loc = locationLabel(s);
+                return (
+                  <li key={s.id} className="flex items-start justify-between gap-3 py-2.5 text-sm">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{deviceLabel(s.userAgent)}</span>
+                        {s.current ? (
+                          <Badge variant="secondary">{t("profile.sessions.thisDevice")}</Badge>
+                        ) : null}
+                      </div>
+                      <div className="mt-0.5 text-muted-foreground text-xs">
+                        {methodLabel(s.authMethod)}
+                        {loc ? ` · ${loc}` : ""}
+                        {s.ip ? ` · ${s.ip}` : ""}
+                      </div>
+                      <div className="text-muted-foreground text-xs">{relTime(s.lastActiveAt)}</div>
                     </div>
-                    <div className="mt-0.5 text-muted-foreground text-xs">
-                      {methodLabel(s.authMethod)}
-                      {loc ? ` · ${loc}` : ""}
-                      {s.ip ? ` · ${s.ip}` : ""}
-                    </div>
-                    <div className="text-muted-foreground text-xs">{relTime(s.lastActiveAt)}</div>
-                  </div>
-                  {!s.current ? (
-                    <button
-                      type="button"
-                      onClick={() => terminate(s.id)}
-                      disabled={busy}
-                      className="cursor-pointer text-muted-foreground text-xs transition-colors hover:text-red-500"
-                    >
-                      {t("profile.sessions.end")}
-                    </button>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
+                    {!s.current ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => terminate(s.id)}
+                        disabled={busy}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        {t("profile.sessions.end")}
+                      </Button>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
         </Card>
 
         <Button variant="outline" size="sm" className="self-start" onClick={logout}>

@@ -1,10 +1,18 @@
 "use client";
 
-import { Button } from "@outegro/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  LanguageSwitcher,
+  Skeleton,
+} from "@outegro/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { LOCALES, useI18n } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export interface Me {
   userId: string;
@@ -12,28 +20,9 @@ export interface Me {
   isAdmin: boolean;
 }
 
-/** Compact 5-language switcher (RU/EN/UZ/TJ/KG), shared style with Outegro ID. */
 function LangSwitch() {
   const { locale, setLocale } = useI18n();
-  return (
-    <div className="glass flex items-center rounded-lg p-0.5 text-xs">
-      {LOCALES.map(({ code, label }) => (
-        <button
-          key={code}
-          type="button"
-          onClick={() => setLocale(code)}
-          className={cn(
-            "cursor-pointer rounded-md px-1.5 py-1 font-medium transition-colors",
-            locale === code
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
+  return <LanguageSwitcher value={locale} onValueChange={setLocale} />;
 }
 
 const ID_ORIGIN = "https://id.outegro.com";
@@ -49,30 +38,34 @@ async function signOut() {
   window.location.href = "/";
 }
 
+function Logo({ className }: { className?: string }) {
+  return (
+    <span
+      className={`flex items-center justify-center rounded-lg bg-primary text-primary-foreground ${className ?? "size-7 text-sm"}`}
+    >
+      $
+    </span>
+  );
+}
+
 /** App header: brand + settings link + language switcher + sign out. */
 function Header() {
   const { t } = useI18n();
   return (
-    <header className="glass sticky top-0 z-10 rounded-none border-x-0 border-t-0">
+    <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-2 px-5">
         <Link href="/" className="flex items-center gap-2 font-semibold">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]">
-            $
-          </span>
+          <Logo />
           <span className="hidden sm:inline">{t("gate.title")}</span>
         </Link>
         <nav className="flex items-center gap-1 text-sm">
-          <Link href="/settings" className="rounded-lg px-3 py-1.5 hover:bg-accent">
-            {t("nav.settings")}
-          </Link>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/settings">{t("nav.settings")}</Link>
+          </Button>
           <LangSwitch />
-          <button
-            type="button"
-            onClick={signOut}
-            className="cursor-pointer rounded-lg px-3 py-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
+          <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
             {t("nav.signout")}
-          </button>
+          </Button>
         </nav>
       </div>
     </header>
@@ -82,20 +75,22 @@ function Header() {
 function LoginGate() {
   const { t } = useI18n();
   return (
-    <main className="liquid-canvas relative flex min-h-dvh flex-col items-center justify-center px-6">
+    <main className="relative flex min-h-dvh flex-col items-center justify-center px-6">
       <div className="absolute top-4 right-4">
         <LangSwitch />
       </div>
-      <div className="glass-strong flex w-full max-w-sm flex-col items-center gap-5 rounded-3xl p-8 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]">
-          $
-        </span>
-        <h1 className="font-semibold text-2xl tracking-tight">{t("gate.title")}</h1>
-        <p className="text-muted-foreground text-sm">{t("gate.tagline")}</p>
-        <Button className="w-full" onClick={goToLogin}>
-          {t("gate.signin")}
-        </Button>
-      </div>
+      <Card className="w-full max-w-sm text-center">
+        <CardHeader className="items-center">
+          <Logo className="mx-auto size-14 rounded-2xl text-2xl" />
+          <CardTitle className="text-2xl">{t("gate.title")}</CardTitle>
+          <CardDescription>{t("gate.tagline")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button className="w-full" onClick={goToLogin}>
+            {t("gate.signin")}
+          </Button>
+        </CardContent>
+      </Card>
     </main>
   );
 }
@@ -116,7 +111,10 @@ export function Shell({ children }: { children: (me: Me) => React.ReactNode }) {
 
   if (me === undefined) {
     return (
-      <main className="flex min-h-dvh items-center justify-center text-muted-foreground">…</main>
+      <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-4 px-5 py-8">
+        <Skeleton className="h-14 w-full" />
+        <Skeleton className="h-48 w-full" />
+      </main>
     );
   }
   if (me === null) {

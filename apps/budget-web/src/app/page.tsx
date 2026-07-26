@@ -14,7 +14,7 @@ function Dashboard() {
   const live = useLiveSync();
 
   return (
-    <div className="liquid-canvas -mx-5 -my-8 flex min-h-[calc(100dvh-3.5rem)] flex-col gap-5 px-5 py-8">
+    <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-3">
         <h1 className="font-semibold text-2xl tracking-tight">{t("dash.title")}</h1>
         <LiveBadge status={live} />
