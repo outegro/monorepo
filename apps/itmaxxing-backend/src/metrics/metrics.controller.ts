@@ -1,7 +1,7 @@
 import { Controller, Get, Header } from "@nestjs/common";
 import { registry } from "./metrics";
 
-/** Prometheus scrape endpoint (PodMonitor → :3000/metrics). Public; carries no secrets. */
+/** Prometheus scrape endpoint (ServiceMonitor → :3000/metrics). Public; carries no secrets. */
 @Controller("metrics")
 export class MetricsController {
   @Get()

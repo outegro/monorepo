@@ -14,6 +14,12 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter "@outegro/${APP}" build
+# git does not track empty directories, so an app with no static assets ships without
+# `public/` and the runner-stage COPY below fails the whole build ("public: not found").
+# That bit edu-web once (2f65e64) and then budget-web + itmaxxing-web again. Materialising
+# the directory here makes the COPY unconditional instead of relying on every new app
+# remembering to commit a .gitkeep.
+RUN mkdir -p apps/${APP}/public
 
 FROM ${NODE_IMAGE} AS runner
 ARG APP

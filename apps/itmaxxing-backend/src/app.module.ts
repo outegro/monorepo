@@ -6,6 +6,7 @@ import { validate } from "./config/env.validation";
 import { HealthModule } from "./health/health.module";
 import { LlmModule } from "./llm/llm.module";
 import { LoreModule } from "./lore/lore.module";
+import { MetricsModule } from "./metrics/metrics.module";
 import { PrismaModule } from "./prisma/prisma.module";
 
 const isProd = process.env.NODE_ENV === "production";
@@ -25,6 +26,7 @@ const isProd = process.env.NODE_ENV === "production";
     PrismaModule,
     LlmModule,
     LoreModule,
+    MetricsModule,
     HealthModule,
   ],
 })

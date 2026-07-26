@@ -114,7 +114,7 @@ All under `auth-backend` (in-cluster `http://auth-backend:80`, public via id-web
 
 Your backend must verify the Bearer **statelessly** against JWKS. No Redis, no call to auth on
 the hot path. Copy these verbatim from `apps/budget-backend/src/common/` (they're identical across
-edu/budget/auth):
+budget/auth — edu had the same copy before it was removed):
 
 **`src/common/current-user.decorator.ts`**
 ```ts
@@ -265,7 +265,7 @@ per channel (an unlinked Telegram is skipped, not an error).
 ```ts
 notifyRequestedDataSchema = {
   userId: string,
-  template: "login_code" | "security_alert" | "edu_notice",   // add yours to the enum if needed
+  template: "login_code" | "security_alert" | "service_notice", // add yours to the enum if needed
   channels: ("email" | "telegram")[],                          // ≥1
   to: { email?: string, telegramChatId?: string },             // usually {} — notifications resolves it
   locale: "ru" | "en",                                         // default "ru"
@@ -277,20 +277,20 @@ notifyRequestedDataSchema = {
   with `to: {}`; notifications looks up the linked chat id and **skips silently if unlinked**.
 - To add a new notification kind: extend `notifyTemplateSchema` in
   `packages/contracts/src/events/notify.ts` **and** add the template renderer in notifications-backend.
-  Until then, reuse `edu_notice` (generic `{ title, message }`).
+  Until then, reuse `service_notice` (generic `{ title, message }`).
 
-### 5.2 Publish it (transactional outbox — copy from edu-backend)
+### 5.2 Publish it (transactional outbox — copy from auth-backend)
 Don't publish to RabbitMQ inline (lost on crash / phantom on rollback). Write the event to an
 `outbox_events` table **in the same DB transaction** as your business change; a relay publishes it.
-Copy these three from `apps/edu-backend/src/notify/`: `outbox.service.ts`, `outbox.relay.ts`,
-`notify.service.ts`, plus `messaging/rabbitmq.module.ts` (declares the `notify` topic exchange,
+Copy from `apps/auth-backend/src/outbox/`: `outbox.service.ts` and `outbox.relay.ts` (polling relay
+with `FOR UPDATE SKIP LOCKED` — safe across replicas), plus `messaging/rabbitmq.module.ts` (declares the `notify` topic exchange,
 `connectionInitOptions: { wait: false }` so the pod boots even if the broker blips).
 
 ```ts
 // notify.service.ts — the public API your domain code calls
 async notifyUser(userId: string, title: string, message: string) {
   const data = notifyRequestedDataSchema.parse({
-    userId, template: "edu_notice", channels: ["telegram"], to: {}, locale: "ru",
+    userId, template: "service_notice", channels: ["telegram"], to: {}, locale: "ru",
     data: { title, message },
   });
   await this.outbox.publish(Exchanges.Notify, makeEvent(RoutingKeys.NotifyRequested, 1, data));
@@ -341,4 +341,4 @@ pnpm --filter @outegro/<svc>-web dev
 - [ ] `csrfOk` on all state-changing routes; cookies httpOnly (`og_access` host-only, `outegro_refresh` `.outegro.com`).
 
 **Reference implementations to copy:** `apps/budget-web` (BFF), `apps/budget-backend` (guard),
-`apps/edu-backend/src/notify/*` (notifications outbox).
+`apps/auth-backend/src/outbox/*` (transactional outbox).

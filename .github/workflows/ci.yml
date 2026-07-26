@@ -48,8 +48,6 @@ jobs:
           - { app: payments-backend, dockerfile: infra/Dockerfile.nest }
           - { app: id-web, dockerfile: infra/Dockerfile.next }
           - { app: pay-web, dockerfile: infra/Dockerfile.next }
-          - { app: edu-backend, dockerfile: infra/Dockerfile.nest }
-          - { app: edu-web, dockerfile: infra/Dockerfile.next }
           - { app: budget-backend, dockerfile: infra/Dockerfile.nest }
           - { app: budget-web, dockerfile: infra/Dockerfile.next }
           - { app: itmaxxing-backend, dockerfile: infra/Dockerfile.nest }

@@ -12,8 +12,16 @@ on:
 
 jobs:
   bump-gitops:
-    # Only when the CI run that triggered us actually passed.
-    if: github.event.workflow_run.conclusion == 'success'
+    # Deliberately NOT gated on the whole run passing. The `images` matrix is
+    # fail-fast:false, so one broken app used to suppress the bump for every other app
+    # that built fine — which is exactly how budget/itmaxxing ended up pinned to a
+    # non-existent `:main` tag while their backend images sat in GHCR. The per-app
+    # `docker manifest inspect` below is the real gate: a tag is bumped only if that
+    # image actually exists. And since `images` needs `quality`, an image can only
+    # exist when typecheck/lint/tests passed — so this cannot deploy broken code.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' ||
+      github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -50,7 +58,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITOPS_PAT }}
         run: |
           set -euo pipefail
-          for app in landing-web auth-backend notifications-backend payments-backend id-web pay-web edu-backend edu-web budget-backend budget-web itmaxxing-backend itmaxxing-web; do
+          for app in landing-web auth-backend notifications-backend payments-backend id-web pay-web budget-backend budget-web itmaxxing-backend itmaxxing-web; do
             file="gitops/values/services/${app}.yaml"
             if [ ! -f "$file" ]; then continue; fi
             # Only bump apps whose image was ACTUALLY built+pushed for this sha. The

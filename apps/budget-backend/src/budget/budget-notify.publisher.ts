@@ -7,7 +7,7 @@ import { Exchanges, makeEvent, notifyRequestedDataSchema, RoutingKeys } from "@o
  * so it targets Telegram — notifications resolves the linked chat id and skips silently if
  * unlinked. Published best-effort (not via a transactional outbox): a budget threshold alert
  * is informational, not transaction-critical, so a lost publish is acceptable (unlike auth's
- * security alerts). `edu_notice` is the platform's generic subservice-notice template
+ * security alerts). `service_notice` is the platform's generic subservice-notice template
  * ({ title, message }); reused here rather than adding a budget-specific template.
  */
 @Injectable()
@@ -32,7 +32,7 @@ export class BudgetNotifyPublisher {
     try {
       const data = notifyRequestedDataSchema.parse({
         userId,
-        template: "edu_notice",
+        template: "service_notice",
         channels: ["telegram"],
         to: {},
         locale: "ru",
