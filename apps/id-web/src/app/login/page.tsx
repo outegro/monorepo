@@ -6,7 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { GoogleIcon, PasskeyIcon } from "@/components/icons";
 import { TopBar } from "@/components/top-bar";
-import { Button } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 
 type Step = "email" | "code";
@@ -108,11 +108,11 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-dvh items-center justify-center px-6">
+    <main className="liquid-canvas relative flex min-h-dvh items-center justify-center px-6">
       <TopBar />
-      <div className="w-full max-w-sm">
+      <Card strong className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-foreground font-semibold text-background text-lg">
+          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary font-semibold text-primary-foreground text-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]">
             O
           </div>
           <h1 className="font-semibold text-2xl tracking-tight">{t("login.title")}</h1>
@@ -173,7 +173,7 @@ export default function LoginPage() {
               </Button>
               <a
                 href="/api/auth/google/start"
-                className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 font-medium text-sm transition-colors hover:bg-accent"
+                className="glass glass-press inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 font-medium text-sm hover:bg-accent"
               >
                 <GoogleIcon />
                 {t("login.google")}
@@ -181,7 +181,7 @@ export default function LoginPage() {
             </div>
           </>
         ) : null}
-      </div>
+      </Card>
     </main>
   );
 }

@@ -50,7 +50,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITOPS_PAT }}
         run: |
           set -euo pipefail
-          for app in landing-web auth-backend notifications-backend payments-backend id-web pay-web edu-backend edu-web; do
+          for app in landing-web auth-backend notifications-backend payments-backend id-web pay-web edu-backend edu-web budget-backend budget-web itmaxxing-backend itmaxxing-web; do
             file="gitops/values/services/${app}.yaml"
             if [ ! -f "$file" ]; then continue; fi
             # Only bump apps whose image was ACTUALLY built+pushed for this sha. The

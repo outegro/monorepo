@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
   reactStrictMode: true,
   reactCompiler: true,
+  transpilePackages: ["@outegro/ui"],
 };
 
 export default nextConfig;

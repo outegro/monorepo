@@ -1,0 +1,208 @@
+/*
+ * Outegro Liquid Glass design system.
+ * Import AFTER `@import "tailwindcss";` in each app's globals.css:
+ *   @import "tailwindcss";
+ *   @import "@outegro/ui/styles.css";
+ * Ported from the standalone "Finance Future" budget planner prototype, which
+ * had already worked out an Apple-style translucent-glass palette + utilities.
+ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+}
+
+/* Light-only Apple Liquid Glass palette (no dark mode yet across the platform). */
+:root {
+  --background: oklch(0.985 0.005 95);
+  --foreground: oklch(0.18 0.02 270);
+
+  --card: oklch(1 0 0 / 0.65);
+  --card-foreground: oklch(0.18 0.02 270);
+  --popover: oklch(1 0 0 / 0.78);
+  --popover-foreground: oklch(0.18 0.02 270);
+
+  /* Brand — Apple-system blue shifted slightly cyan. Override --primary per app for accent variety. */
+  --primary: oklch(0.55 0.18 245);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.97 0.005 95 / 0.7);
+  --secondary-foreground: oklch(0.22 0.02 270);
+  --muted: oklch(0.95 0.005 95 / 0.55);
+  --muted-foreground: oklch(0.48 0.015 270);
+  --accent: oklch(0.95 0.015 245 / 0.5);
+  --accent-foreground: oklch(0.22 0.02 270);
+  --destructive: oklch(0.6 0.22 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(1 0 0 / 0.5);
+  --input: oklch(1 0 0 / 0.6);
+  --ring: oklch(0.7 0.12 245 / 0.4);
+
+  --chart-1: oklch(0.78 0.12 245);
+  --chart-2: oklch(0.8 0.1 195);
+  --chart-3: oklch(0.82 0.12 145);
+  --chart-4: oklch(0.78 0.14 65);
+  --chart-5: oklch(0.7 0.18 25);
+
+  --radius: 1.25rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv11";
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: linear-gradient(135deg, oklch(1 0 0 / 0.78) 0%, oklch(1 0 0 / 0.55) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid oklch(1 0 0 / 0.6);
+    box-shadow:
+      0 1px 0 0 oklch(1 0 0 / 0.7) inset,
+      0 8px 32px -8px oklch(0.2 0.05 270 / 0.12),
+      0 2px 6px -2px oklch(0.2 0.05 270 / 0.08);
+  }
+  .glass-strong {
+    background: linear-gradient(135deg, oklch(1 0 0 / 0.92) 0%, oklch(1 0 0 / 0.75) 100%);
+    backdrop-filter: blur(40px) saturate(200%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    border: 1px solid oklch(1 0 0 / 0.7);
+    box-shadow:
+      0 1px 0 0 oklch(1 0 0 / 0.8) inset,
+      0 20px 60px -12px oklch(0.2 0.05 270 / 0.15),
+      0 4px 12px -4px oklch(0.2 0.05 270 / 0.1);
+  }
+  .glass-tint {
+    background: linear-gradient(
+      135deg,
+      oklch(0.78 0.12 245 / 0.18) 0%,
+      oklch(0.8 0.1 195 / 0.12) 100%
+    );
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid oklch(1 0 0 / 0.55);
+  }
+  .glass-tint-warm {
+    background: linear-gradient(
+      135deg,
+      oklch(0.82 0.12 65 / 0.2) 0%,
+      oklch(0.78 0.14 25 / 0.12) 100%
+    );
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid oklch(1 0 0 / 0.55);
+  }
+  .glass-tint-green {
+    background: linear-gradient(
+      135deg,
+      oklch(0.82 0.12 145 / 0.2) 0%,
+      oklch(0.78 0.1 175 / 0.12) 100%
+    );
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid oklch(1 0 0 / 0.55);
+  }
+
+  /* Hero backdrop — large diffuse gradient blobs that create the liquid feel. */
+  .liquid-canvas {
+    background-color: oklch(0.985 0.005 95);
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% 10%, oklch(0.78 0.12 245 / 0.35) 0%, transparent 50%),
+      radial-gradient(ellipse 70% 50% at 85% 25%, oklch(0.8 0.1 195 / 0.28) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 50% at 75% 90%, oklch(0.82 0.12 65 / 0.22) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 15% 80%, oklch(0.78 0.14 295 / 0.18) 0%, transparent 55%);
+    background-attachment: fixed;
+  }
+
+  .glass-highlight {
+    position: relative;
+  }
+  .glass-highlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      oklch(1 0 0 / 0.8) 0%,
+      oklch(1 0 0 / 0) 30%,
+      oklch(1 0 0 / 0) 70%,
+      oklch(1 0 0 / 0.3) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .glass-press {
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.2s ease,
+      background 0.2s ease;
+  }
+  .glass-press:active {
+    transform: scale(0.97);
+  }
+}
+
+@layer base {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.7 0.02 270 / 0.3);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.6 0.02 270 / 0.5);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+}

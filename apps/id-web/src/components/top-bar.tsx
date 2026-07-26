@@ -14,7 +14,7 @@ export function TopBar() {
 
   return (
     <div className="absolute top-4 right-4 flex items-center gap-1">
-      <div className="flex items-center rounded-lg border border-border p-0.5 text-xs">
+      <div className="glass flex items-center rounded-lg p-0.5 text-xs">
         {LOCALES.map(({ code, label }) => (
           <button
             key={code}
@@ -23,7 +23,7 @@ export function TopBar() {
             className={cn(
               "cursor-pointer rounded-md px-1.5 py-1 font-medium transition-colors",
               locale === code
-                ? "bg-foreground text-background"
+                ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -35,7 +35,7 @@ export function TopBar() {
         type="button"
         aria-label="Toggle theme"
         onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:text-foreground"
+        className="glass flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
       >
         {mounted && resolvedTheme === "dark" ? (
           // sun

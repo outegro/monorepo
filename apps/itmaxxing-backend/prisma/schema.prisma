@@ -1,0 +1,80 @@
+// itmaxxing-backend schema — job-hunt copilot. v1 is the "lore intake" hook (§2.1 of the
+// design doc): a user brain-dumps their career, the LLM improves it + flags red flags, then
+// structures it into lore_entries — the canonical asset everything else (résumé bullets,
+// cover letters, tailoring) is generated from. All rows scoped by `userId` (auth `sub`);
+// itmaxxing owns its own database, no cross-service FK.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// One per user — headline + target role drive the LLM prompts.
+model Profile {
+  userId     String   @id @map("user_id") @db.Uuid
+  headline   String?
+  targetRole String?  @map("target_role")
+  locale     String   @default("en")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("profiles")
+}
+
+// The canonical structured career asset. Produced by the intake's structuring step, then
+// user-editable. `metrics` holds extracted numbers (impact figures); `tags` for tailoring.
+model LoreEntry {
+  id        String        @id @default(uuid()) @db.Uuid
+  userId    String        @map("user_id") @db.Uuid
+  type      LoreEntryType
+  title     String
+  org       String?
+  startDate String?       @map("start_date") // free-form "2021-03" / "Summer 2020"
+  endDate   String?       @map("end_date")
+  body      String        @default("")
+  metrics   Json          @default("[]") // [{ label, value }]
+  tags      String[]      @default([])
+  order     Int           @default(0)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("lore_entries")
+}
+
+// Every LLM pass (intake improve, structure, later: bullets/cover) — input/output/model kept
+// for cache, audit and cost tracking (the design's `generations` table).
+model Generation {
+  id        String         @id @default(uuid()) @db.Uuid
+  userId    String         @map("user_id") @db.Uuid
+  kind      GenerationKind
+  input     String
+  output    Json // structured LLM result (diff + red flags, or structured entries)
+  model     String
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, kind])
+  @@map("generations")
+}
+
+enum LoreEntryType {
+  role
+  project
+  achievement
+  skill
+  education
+  note
+}
+
+enum GenerationKind {
+  intake_review // freeform → improved text + red flags
+  structure // accepted text → structured lore_entries
+  bullet
+  cover_letter
+  summary
+}
