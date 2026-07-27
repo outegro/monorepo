@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { KakaoService } from "../kakao/kakao.service";
 import { LlmService } from "../llm/llm.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { ReelMetaService } from "./reel-meta.service";
 import {
   type Candidate,
   type ConfirmInput,
@@ -27,6 +28,7 @@ export class ReelsService {
     private readonly prisma: PrismaService,
     private readonly llm: LlmService,
     private readonly kakao: KakaoService,
+    private readonly reelMeta: ReelMetaService,
   ) {}
 
   /**
@@ -83,10 +85,31 @@ export class ReelsService {
     return { processed };
   }
 
-  /** Extract → search → park in NEEDS_REVIEW. Never throws: one bad row must not stop a run. */
+  /**
+   * Read caption → extract → search → park in NEEDS_REVIEW. Never throws: one bad row must
+   * not stop a run.
+   *
+   * The caption is fetched first and is the primary signal — a Korean reel usually names the
+   * place outright, which no amount of guessing from a URL can match. The human's note is the
+   * fallback, and when both exist they are concatenated: the note often carries the intent
+   * ("for breakfast") that the caption does not.
+   */
   async processOne(id: string, url: string, note: string | null): Promise<void> {
     try {
-      const extracted = note ? await this.extract(note, url) : {};
+      const meta = await this.reelMeta.fetch(url);
+      if (meta.caption || meta.uploader) {
+        await this.prisma.reel.update({
+          where: { id },
+          data: {
+            caption: meta.caption,
+            uploader: meta.uploader,
+            thumbnail: meta.thumbnail,
+          },
+        });
+      }
+
+      const source = [meta.caption, note].filter(Boolean).join("\n\n").trim() || null;
+      const extracted = source ? await this.extract(source, url) : {};
       const query = extracted.query ?? note ?? null;
 
       const candidates = query
@@ -186,8 +209,15 @@ export class ReelsService {
   }
 
   /**
-   * The one moment a place becomes real. Upserts so re-confirming a reel (picked the wrong
-   * candidate first time) corrects the row instead of exploding on the unique constraint.
+   * The one moment a place becomes real.
+   *
+   * Keyed on (userId, kakaoId), not on the reel: several reels legitimately describe the same
+   * restaurant, and confirming the second one must attach to the existing place rather than
+   * drop a duplicate pin next to it. So this upserts the PLACE and then points the reel at it.
+   *
+   * Fields that a human has curated on an existing place — day, tags, priceNote — are only
+   * written when this call actually supplies them. Otherwise confirming a second reel onto a
+   * place already scheduled for day 3 would silently unschedule it.
    */
   async confirm(userId: string, id: string, input: ConfirmInput) {
     const reel = await this.prisma.reel.findFirst({ where: { id, userId } });
@@ -196,9 +226,7 @@ export class ReelsService {
     const chosen = this.pickCandidate(reel.candidates, input);
     if (!chosen) throw new NotFoundException({ code: "candidate_not_found" });
 
-    const data = {
-      userId,
-      kakaoId: chosen.kakaoId,
+    const identity = {
       name: chosen.name,
       categoryGroup: chosen.categoryGroup,
       categoryName: chosen.categoryName,
@@ -208,22 +236,34 @@ export class ReelsService {
       kakaoUrl: chosen.kakaoUrl,
       lat: chosen.lat,
       lng: chosen.lng,
-      priceNote: input.priceNote ?? this.priceFrom(reel.extracted),
-      tags: input.tags ?? [],
-      day: input.day ?? null,
+    };
+    const curated = {
+      ...(input.priceNote !== undefined ? { priceNote: input.priceNote } : {}),
+      ...(input.tags !== undefined ? { tags: input.tags } : {}),
+      ...(input.day !== undefined ? { day: input.day } : {}),
     };
 
     const [place] = await this.prisma.$transaction([
       this.prisma.place.upsert({
-        where: { reelId: id },
-        create: { reelId: id, ...data },
-        update: data,
+        where: { userId_kakaoId: { userId, kakaoId: chosen.kakaoId } },
+        create: {
+          userId,
+          kakaoId: chosen.kakaoId,
+          ...identity,
+          priceNote: input.priceNote ?? this.priceFrom(reel.extracted),
+          tags: input.tags ?? [],
+          day: input.day ?? null,
+        },
+        // Refresh Kakao's own data (it can change), keep whatever the human set.
+        update: { ...identity, ...curated },
       }),
       this.prisma.reel.update({
         where: { id },
         data: { status: "CONFIRMED", candidates: undefined },
       }),
     ]);
+
+    await this.prisma.reel.update({ where: { id }, data: { placeId: place.id } });
     return place;
   }
 

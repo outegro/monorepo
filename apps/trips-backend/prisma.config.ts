@@ -20,5 +20,11 @@ export default defineConfig({
       }
       return databaseUrl;
     },
+    /**
+     * Only used by `prisma migrate diff --from-migrations`, which replays the migration
+     * folder into a throwaway database to work out the delta. Local development concern
+     * only — unset in CI and in the cluster, where `migrate deploy` just applies files.
+     */
+    shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL,
   },
 });

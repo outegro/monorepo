@@ -18,7 +18,14 @@ export class PlacesService {
     return this.prisma.place.findMany({
       where: { userId },
       orderBy: [{ day: { sort: "asc", nulls: "last" } }, { orderInDay: "asc" }, { name: "asc" }],
-      include: { reel: { select: { url: true, note: true } } },
+      // Every reel that pointed here — the trip UI shows them as a strip under the place, so
+      // you can rewatch what made you save it.
+      include: {
+        reels: {
+          select: { id: true, url: true, note: true, caption: true, thumbnail: true },
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
   }
 
@@ -31,11 +38,15 @@ export class PlacesService {
   async remove(userId: string, id: string) {
     const place = await this.prisma.place.findFirst({ where: { id, userId } });
     if (!place) throw new NotFoundException({ code: "place_not_found" });
-    // Drop the place but send the reel back to review rather than losing it — the reel was
-    // worth keeping or it would have been skipped.
+    // Drop the place but send every reel that pointed at it back to review rather than losing
+    // them — they were worth keeping or they would have been skipped. The FK is SetNull, so
+    // placeId clears itself; the status has to be reset explicitly.
     await this.prisma.$transaction([
+      this.prisma.reel.updateMany({
+        where: { placeId: id },
+        data: { status: "NEEDS_REVIEW" },
+      }),
       this.prisma.place.delete({ where: { id } }),
-      this.prisma.reel.update({ where: { id: place.reelId }, data: { status: "NEEDS_REVIEW" } }),
     ]);
     return { ok: true };
   }

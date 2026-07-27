@@ -52,7 +52,8 @@ jobs:
           - { app: budget-web, dockerfile: infra/Dockerfile.next }
           - { app: itmaxxing-backend, dockerfile: infra/Dockerfile.nest }
           - { app: itmaxxing-web, dockerfile: infra/Dockerfile.next }
-          - { app: trips-backend, dockerfile: infra/Dockerfile.nest }
+          # trips reads Instagram captions → needs yt-dlp in the runtime image.
+          - { app: trips-backend, dockerfile: infra/Dockerfile.nest, ytdlp: "1" }
           - { app: trips-web, dockerfile: infra/Dockerfile.next }
     steps:
       - uses: actions/checkout@v4
@@ -87,7 +88,9 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          build-args: APP=${{ matrix.app }}
+          build-args: |
+            APP=${{ matrix.app }}
+            WITH_YTDLP=${{ matrix.ytdlp || '0' }}
           push: false
           tags: ghcr.io/outegro/monorepo/${{ matrix.app }}:pr-${{ github.event.pull_request.number }}
           # Линкует пакет к репо outegro/monorepo → наследование доступов/видимости (монорепо: имя пакета ≠ имя репо).
@@ -102,7 +105,9 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          build-args: APP=${{ matrix.app }}
+          build-args: |
+            APP=${{ matrix.app }}
+            WITH_YTDLP=${{ matrix.ytdlp || '0' }}
           push: true
           tags: ghcr.io/outegro/monorepo/${{ matrix.app }}:${{ github.sha }}
           # Линкует пакет к репо outegro/monorepo → наследование доступов/видимости (монорепо: имя пакета ≠ имя репо).
