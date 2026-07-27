@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { KAKAO_JS_KEY } from "@/lib/env";
 
 export interface MapPoint {
   id: string;
@@ -41,15 +40,15 @@ declare global {
 
 let sdkPromise: Promise<void> | null = null;
 
-function loadSdk(): Promise<void> {
-  if (!KAKAO_JS_KEY) return Promise.reject(new Error("no_kakao_js_key"));
+function loadSdk(appKey: string): Promise<void> {
+  if (!appKey) return Promise.reject(new Error("no_kakao_js_key"));
   if (window.kakao?.maps) return Promise.resolve();
   if (sdkPromise) return sdkPromise;
 
   sdkPromise = new Promise<void>((resolve, reject) => {
     const el = document.createElement("script");
     // autoload=false → the SDK exposes kakao.maps.load() so we control when it initialises.
-    el.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&autoload=false`;
+    el.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false`;
     el.async = true;
     el.onload = () => window.kakao?.maps.load(() => resolve());
     el.onerror = () => reject(new Error("kakao_sdk_failed"));
@@ -61,13 +60,22 @@ function loadSdk(): Promise<void> {
 export function KakaoMap({ points, className }: { points: MapPoint[]; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
+  // Runtime config, not a build-time constant — see app/api/config/route.ts.
+  const [appKey, setAppKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => (r.ok ? r.json() : { kakaoJsKey: "" }))
+      .then((c: { kakaoJsKey?: string }) => setAppKey(c.kakaoJsKey ?? ""))
+      .catch(() => setAppKey(""));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     const first = points[0];
-    if (!ref.current || !first) return;
+    if (!ref.current || !first || !appKey) return;
 
-    loadSdk()
+    loadSdk(appKey)
       .then(() => {
         if (cancelled || !ref.current || !window.kakao) return;
         const { maps } = window.kakao;
@@ -103,9 +111,10 @@ export function KakaoMap({ points, className }: { points: MapPoint[]; className?
     return () => {
       cancelled = true;
     };
-  }, [points]);
+  }, [points, appKey]);
 
-  if (!KAKAO_JS_KEY || failed) {
+  // appKey === null means "still asking"; "" means "configured off".
+  if (appKey === "" || failed) {
     return (
       <div
         className={`flex items-center justify-center rounded-lg border border-dashed p-6 text-center text-muted-foreground text-sm ${className ?? ""}`}

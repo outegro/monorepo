@@ -17,18 +17,15 @@ export const serverEnv = {
   cookieDomain: process.env.COOKIE_DOMAIN ?? (isProd ? ".outegro.com" : ""),
   accessCookie: "og_access",
   refreshCookie: process.env.REFRESH_COOKIE ?? "outegro_refresh",
+  /**
+   * Kakao Maps JS SDK key. Public by design — protected by the domain allow-list in the Kakao
+   * console, not by secrecy — but read at runtime and served via /api/config rather than as a
+   * NEXT_PUBLIC_ build-time constant, because this image is built once in CI and configured
+   * per environment by Helm.
+   */
+  kakaoJsKey: process.env.KAKAO_JS_KEY ?? "",
   isProd,
 } as const;
 
 export const ACCESS_MAX_AGE = 300; // matches auth-backend ACCESS_TTL
 export const REFRESH_MAX_AGE = 2_592_000; // 30 days
-
-/**
- * Kakao Maps JS SDK key. Public by design — it ships to the browser and is protected by the
- * domain allow-list in the Kakao console (플랫폼 → Web), not by secrecy. That is why it is a
- * NEXT_PUBLIC_ build-time value and not part of the sealed secret: the REST key in
- * trips-backend is the one that must stay server-side.
- *
- * Empty string when unset — the map components degrade to a plain list rather than throwing.
- */
-export const KAKAO_JS_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY ?? "";
