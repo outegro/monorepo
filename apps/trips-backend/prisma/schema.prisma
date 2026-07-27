@@ -4,9 +4,11 @@
 // which candidate is the real place. Nothing reaches `places` without that confirmation —
 // auto-resolution is wrong often enough that unreviewed rows would poison the trip plan.
 //
-// Instagram is fully login-walled: og:meta, /embed/captioned/ and oEmbed all return nothing
-// useful anonymously (verified 2026-07-27). So the note is the ONLY signal besides the URL,
-// and a reel submitted without one usually stays unresolved until a human types something.
+// Two signals feed extraction: the reel's own caption, read at ingest by yt-dlp, and an
+// optional note the submitter typed. The caption is usually the better of the two. Instagram's
+// HTML surfaces are login-walled (og:meta, /embed/captioned/, oEmbed all return nothing
+// anonymously — checked 2026-07-27), which is why this goes through yt-dlp rather than a
+// hand-rolled scrape; when even that fails, the note is what is left.
 //
 // All rows scoped by `userId` (auth `sub`); trips owns its own database, no cross-service FK.
 
@@ -45,8 +47,14 @@ model Reel {
   url       String
   shortcode String
   /// Free-text hint typed by whoever submitted it: place name, district, "카페 in 성수",
-  /// anything. The single most valuable field in the whole service.
+  /// anything.
   note      String?
+  /// The reel's own caption, read by yt-dlp at ingest. Usually far richer than the note —
+  /// Korean reels tend to name the place outright — so extraction prefers it and falls back
+  /// to `note`. Null when the post is private, deleted, or yt-dlp was rate-limited.
+  caption   String?
+  uploader  String?
+  thumbnail String?
   status    ReelStatus @default(PENDING)
   /// LLM output: { query, categoryGroup, district, priceHint, keywords[] }. Kept raw so a
   /// prompt change can be re-run over old rows without a migration.
@@ -57,7 +65,10 @@ model Reel {
   createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  place Place?
+  /// Many reels → one place. Two people sending three reels about the same restaurant is the
+  /// normal case, not an edge case, so the place is the entity and reels hang off it.
+  placeId String? @map("place_id") @db.Uuid
+  place   Place?  @relation(fields: [placeId], references: [id], onDelete: SetNull)
 
   // Dedupe per user, not globally — two people may legitimately track the same reel.
   @@unique([userId, shortcode])
@@ -70,8 +81,10 @@ model Reel {
 model Place {
   id     String @id @default(uuid()) @db.Uuid
   userId String @map("user_id") @db.Uuid
-  reelId String @unique @map("reel_id") @db.Uuid
-  reel   Reel   @relation(fields: [reelId], references: [id], onDelete: Cascade)
+
+  /// Every reel that pointed here. Confirming a second reel onto an already-saved place
+  /// attaches it rather than creating a duplicate pin on the map.
+  reels Reel[]
 
   /// Kakao's own place id — lets us re-open the place in KakaoMap and dedupe across reels.
   kakaoId       String  @map("kakao_id")
@@ -104,6 +117,10 @@ model Place {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  /// The dedupe key. Kakao's place id is stable, so "same place" is decided by Kakao rather
+  /// than by comparing names — 스타벅스 exists a hundred times over and name matching would
+  /// merge places that merely share a brand.
+  @@unique([userId, kakaoId])
   @@index([userId, day])
   @@index([userId, categoryGroup])
   @@map("places")
