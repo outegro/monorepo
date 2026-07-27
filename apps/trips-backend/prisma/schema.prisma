@@ -22,6 +22,19 @@ datasource db {
   provider = "postgresql"
 }
 
+enum PlaceKind {
+  // A single point you go to: a restaurant, a cafe, a viewpoint.
+  SPOT
+  // Something you walk along — a hiking trail, a market street, a riverside stretch. The
+  // difference is not cosmetic: for a route the coordinate you NAVIGATE to is the trailhead,
+  // not the destination. Kakao returns 제비봉 (the peak) and 제비봉탐방지원센터 (the visitor
+  // centre at the bottom) as separate places; pinning the peak and deep-linking to it sends
+  // you to a mountaintop with no road.
+  ROUTE
+
+  @@map("place_kind")
+}
+
 enum ReelStatus {
   // Just submitted; nothing has looked at it yet.
   PENDING
@@ -99,10 +112,27 @@ model Place {
   /// Kakao place page; the map.kakao.com/link deep link for navigation is built from lat/lng.
   kakaoUrl      String? @map("kakao_url")
 
-  /// WGS84. Plain floats on purpose: at ~100 places PostGIS would be ceremony, and the only
-  /// geometry we do is "group things that are near each other".
+  kind PlaceKind @default(SPOT)
+
+  /// WGS84, and always THE POINT YOU TRAVEL TO — for a ROUTE that is the trailhead, not the
+  /// summit. Every deep link and every distance calculation uses this, so it has to be the
+  /// reachable end of the thing.
+  ///
+  /// Plain floats on purpose: at ~100 places PostGIS would be ceremony, and the only geometry
+  /// we do is "group things that are near each other".
   lat Float
   lng Float
+
+  /// Ordered stops for a ROUTE: [{ name, lat, lng, role: "start"|"via"|"end" }]. JSON rather
+  /// than a table — it is read and written whole, never queried across, and a trip has a
+  /// handful of routes at most. `lat`/`lng` above duplicate the "start" entry so that SPOT and
+  /// ROUTE behave identically everywhere that just needs a pin.
+  waypoints Json?
+
+  /// Rough walking time in minutes and length in km, when the reel says so. Free-form sources
+  /// disagree wildly, so these are hints for planning a day, not a promise.
+  durationMin Int?   @map("duration_min")
+  distanceKm  Float? @map("distance_km")
 
   /// Free-text price hint from the note ("15,000원 per person"), kept as text deliberately —
   /// reels quote prices too inconsistently to model as a number.

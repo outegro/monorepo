@@ -9,6 +9,7 @@ import {
   candidateSchema,
   type Extraction,
   extractionSchema,
+  guessKind,
   parseBatchLine,
   parseShortcode,
 } from "./reels.contracts";
@@ -108,16 +109,25 @@ export class ReelsService {
         });
       }
 
-      const source = [meta.caption, note].filter(Boolean).join("\n\n").trim() || null;
+      // The uploader handle goes in too: for small businesses it is often the name itself
+      // (`catssarangchae` → 고양이사랑채, measured).
+      const source =
+        [meta.caption, note, meta.uploader && `@${meta.uploader}`]
+          .filter(Boolean)
+          .join("\n\n")
+          .trim() || null;
       const extracted = source ? await this.extract(source, url) : {};
       const query = extracted.query ?? note ?? null;
 
-      const candidates = query
-        ? await this.kakao.search(query, {
-            categoryGroup: extracted.categoryGroup,
-            district: extracted.district,
-          })
-        : [];
+      // An address alone is enough — a place with no usable name still resolves from it.
+      const candidates =
+        query || extracted.address
+          ? await this.kakao.search(query ?? "", {
+              categoryGroup: extracted.categoryGroup,
+              district: extracted.district,
+              address: extracted.address,
+            })
+          : [];
 
       await this.prisma.reel.update({
         where: { id },
@@ -226,6 +236,12 @@ export class ReelsService {
     const chosen = this.pickCandidate(reel.candidates, input);
     if (!chosen) throw new NotFoundException({ code: "candidate_not_found" });
 
+    const kind = input.kind ?? guessKind(chosen.categoryName);
+    const waypoints = input.waypoints ?? [];
+    // For a route the navigable coordinate is the START, not whatever Kakao ranked first —
+    // for a hike that is usually the summit, and routing to a summit is useless.
+    const start = kind === "ROUTE" ? waypoints.find((w) => w.role === "start") : undefined;
+
     const identity = {
       name: chosen.name,
       categoryGroup: chosen.categoryGroup,
@@ -234,13 +250,17 @@ export class ReelsService {
       roadAddress: chosen.roadAddress,
       phone: chosen.phone,
       kakaoUrl: chosen.kakaoUrl,
-      lat: chosen.lat,
-      lng: chosen.lng,
+      lat: start?.lat ?? chosen.lat,
+      lng: start?.lng ?? chosen.lng,
+      kind,
+      ...(waypoints.length > 0 ? { waypoints: waypoints as unknown as object } : {}),
     };
     const curated = {
       ...(input.priceNote !== undefined ? { priceNote: input.priceNote } : {}),
       ...(input.tags !== undefined ? { tags: input.tags } : {}),
       ...(input.day !== undefined ? { day: input.day } : {}),
+      ...(input.durationMin !== undefined ? { durationMin: input.durationMin } : {}),
+      ...(input.distanceKm !== undefined ? { distanceKm: input.distanceKm } : {}),
     };
 
     const [place] = await this.prisma.$transaction([
@@ -253,6 +273,8 @@ export class ReelsService {
           priceNote: input.priceNote ?? this.priceFrom(reel.extracted),
           tags: input.tags ?? [],
           day: input.day ?? null,
+          durationMin: input.durationMin ?? this.numFrom(reel.extracted, "durationMin"),
+          distanceKm: input.distanceKm ?? this.numFrom(reel.extracted, "distanceKm"),
         },
         // Refresh Kakao's own data (it can change), keep whatever the human set.
         update: { ...identity, ...curated },
@@ -275,6 +297,12 @@ export class ReelsService {
     if (input.candidateIndex === undefined || !Array.isArray(stored)) return null;
     const parsed = candidateSchema.safeParse(stored[input.candidateIndex]);
     return parsed.success ? parsed.data : null;
+  }
+
+  /** Pull a numeric hint the LLM extracted, when the reviewer did not override it. */
+  private numFrom(extracted: unknown, key: "durationMin" | "distanceKm"): number | null {
+    const v = (extracted as Record<string, unknown> | null)?.[key];
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
   }
 
   private priceFrom(extracted: unknown): string | null {

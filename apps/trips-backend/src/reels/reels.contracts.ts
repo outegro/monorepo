@@ -62,9 +62,19 @@ export const extractionSchema = z.object({
   /** The string we hand to Kakao keyword search. Korean if the note gave a Korean name. */
   query: z.string().max(200).optional(),
   categoryGroup: categoryGroupSchema.optional(),
-  /** Seoul district or area, e.g. "성수동", "Hongdae" — narrows the Kakao search. */
+  /**
+   * A street address if the text contains one, verbatim and Korean-formatted
+   * ("명동10길 19-3"). Measured on real reels, this is the single strongest signal — but only
+   * combined with a category, since one building holds a dozen unrelated businesses.
+   */
+  address: z.string().max(200).optional(),
+  /** Area name, e.g. "성수동", "Hongdae". Tried as one query among several, never alone. */
   district: z.string().max(120).optional(),
   priceHint: z.string().max(200).optional(),
+  /** Walking time in minutes, if the text states one ("2시간", "약 3시간 코스"). */
+  durationMin: z.number().int().min(1).max(2880).optional(),
+  /** Length in km, if stated. */
+  distanceKm: z.number().min(0).max(500).optional(),
   keywords: z.array(z.string().max(60)).max(10).optional(),
 });
 export type Extraction = z.infer<typeof extractionSchema>;
@@ -84,6 +94,36 @@ export const candidateSchema = z.object({
 });
 export type Candidate = z.infer<typeof candidateSchema>;
 
+/**
+ * One stop on a ROUTE. `start` is the only role that matters operationally — it is what the
+ * place's own lat/lng mirrors and what navigation targets; `via`/`end` exist so the map can
+ * draw the shape and so "where does this finish" is answerable.
+ */
+export const waypointSchema = z.object({
+  name: z.string().min(1).max(120),
+  lat: z.number(),
+  lng: z.number(),
+  role: z.enum(["start", "via", "end"]).default("via"),
+});
+export type Waypoint = z.infer<typeof waypointSchema>;
+
+export const placeKindSchema = z.enum(["SPOT", "ROUTE"]);
+export type PlaceKind = z.infer<typeof placeKindSchema>;
+
+/**
+ * Kakao categories that mean "this is a path, not a pin". Matched against the full category
+ * string, which is why 등산로 (trail) counts but 산봉우리 (peak) does not — a peak is a
+ * destination you reach along a route, not the route itself.
+ */
+const ROUTE_CATEGORY_HINTS = ["등산로", "둘레길", "산책로", "탐방로", "올레길"];
+
+/** Best-effort guess so the reviewer starts from the right kind instead of flipping it. */
+export function guessKind(categoryName: string | null | undefined): PlaceKind {
+  return categoryName && ROUTE_CATEGORY_HINTS.some((h) => categoryName.includes(h))
+    ? "ROUTE"
+    : "SPOT";
+}
+
 export const confirmSchema = z.object({
   /** Index into the stored candidate list. */
   candidateIndex: z.number().int().min(0).max(50).optional(),
@@ -92,6 +132,15 @@ export const confirmSchema = z.object({
   priceNote: z.string().max(200).nullable().optional(),
   tags: z.array(z.string().max(40)).max(20).optional(),
   day: z.number().int().min(1).max(60).nullable().optional(),
+  kind: placeKindSchema.optional(),
+  /**
+   * For a ROUTE. If one carries role "start", the place's lat/lng is moved onto it — otherwise
+   * navigation would aim at whatever Kakao happened to rank first, which for a hike is usually
+   * the summit.
+   */
+  waypoints: z.array(waypointSchema).max(20).optional(),
+  durationMin: z.number().int().min(1).max(2880).nullable().optional(),
+  distanceKm: z.number().min(0).max(500).nullable().optional(),
 });
 export type ConfirmInput = z.infer<typeof confirmSchema>;
 
@@ -101,6 +150,10 @@ export const searchQuerySchema = z.object({
 });
 
 export const updatePlaceSchema = z.object({
+  kind: placeKindSchema.optional(),
+  waypoints: z.array(waypointSchema).max(20).optional(),
+  durationMin: z.number().int().min(1).max(2880).nullable().optional(),
+  distanceKm: z.number().min(0).max(500).nullable().optional(),
   day: z.number().int().min(1).max(60).nullable().optional(),
   orderInDay: z.number().int().min(0).max(500).nullable().optional(),
   priceNote: z.string().max(200).nullable().optional(),
