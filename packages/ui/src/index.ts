@@ -40,12 +40,7 @@ export {
 } from "./components/dropdown-menu.js";
 export { Input } from "./components/input.js";
 export { Label } from "./components/label.js";
-export {
-  LanguageSwitcher,
-  type LanguageSwitcherProps,
-  LOCALES,
-  type Locale,
-} from "./components/language-switcher.js";
+export { LanguageSwitcher, type LanguageSwitcherProps } from "./components/language-switcher.js";
 export {
   Select,
   SelectContent,
@@ -60,4 +55,14 @@ export { Separator } from "./components/separator.js";
 export { Skeleton } from "./components/skeleton.js";
 export { Toaster } from "./components/sonner.js";
 export { Textarea } from "./components/textarea.js";
+export {
+  DEFAULT_LOCALE,
+  detectInitialLocale,
+  isLocale,
+  LOCALE_COOKIE,
+  LOCALES,
+  type Locale,
+  readLocaleCookie,
+  writeLocaleCookie,
+} from "./lib/locale.js";
 export { cn } from "./lib/utils.js";

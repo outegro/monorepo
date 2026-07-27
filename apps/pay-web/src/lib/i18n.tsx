@@ -1,13 +1,14 @@
 "use client";
 
-import type { Locale } from "@outegro/ui";
+import { detectInitialLocale, type Locale, writeLocaleCookie } from "@outegro/ui";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export type { Locale };
 
 /**
  * Client i18n for Outegro Pay — flat typed dictionary + cookie-persisted switcher.
- * Languages: Russian, English, Uzbek (Latin), Tajik (Cyrillic), Kyrgyz (Cyrillic).
+ * Languages: English (default) and Russian. The locale itself lives in the shared
+ * `og_locale` cookie on `.outegro.com`, so the choice follows the user across services.
  */
 const dict = {
   en: {
@@ -22,24 +23,6 @@ const dict = {
     subtitle: "Управляйте подписками и счетами.",
     soon: "Скоро",
   },
-  uz: {
-    badge: "Outegro Pay",
-    title: "To'lovlar va billing",
-    subtitle: "Obunalar va hisob-fakturalaringizni boshqaring.",
-    soon: "Tez orada",
-  },
-  tg: {
-    badge: "Outegro Pay",
-    title: "Пардохтҳо ва биллинг",
-    subtitle: "Обунаҳо ва ҳисобномаҳои худро идора кунед.",
-    soon: "Ба зудӣ",
-  },
-  ky: {
-    badge: "Outegro Pay",
-    title: "Төлөмдөр жана биллинг",
-    subtitle: "Жазылууларыңызды жана эсептериңизди башкарыңыз.",
-    soon: "Жакында",
-  },
 } as const;
 
 export type TKey = keyof (typeof dict)["en"];
@@ -51,32 +34,19 @@ interface I18nValue {
 }
 
 const I18nContext = createContext<I18nValue | null>(null);
-const COOKIE = "og_locale";
-
-function readCookieLocale(): Locale | null {
-  if (typeof document === "undefined") return null;
-  const m = document.cookie.match(/(?:^|;\s*)og_locale=(en|ru|uz|tg|ky)/);
-  return (m?.[1] as Locale) ?? null;
-}
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("ru");
+  // English until the shared cookie says otherwise; resolved after mount so SSR and
+  // the first client render agree.
+  const [locale, setLocaleState] = useState<Locale>("en");
 
   useEffect(() => {
-    const fromCookie = readCookieLocale();
-    if (fromCookie) {
-      setLocaleState(fromCookie);
-      return;
-    }
-    const lang = navigator.language?.toLowerCase() ?? "";
-    const match = (["uz", "tg", "ky", "en"] as const).find((l) => lang.startsWith(l));
-    if (match) setLocaleState(match);
+    setLocaleState(detectInitialLocale(document.cookie, navigator.language));
   }, []);
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);
-    // biome-ignore lint/suspicious/noDocumentCookie: a plain client-side locale preference cookie, no auth/security relevance
-    document.cookie = `${COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
+    writeLocaleCookie(l);
     document.documentElement.lang = l;
   }, []);
 

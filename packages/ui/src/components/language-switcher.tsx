@@ -1,6 +1,7 @@
 "use client";
 
 import { LanguagesIcon } from "lucide-react";
+import { LOCALES, type Locale } from "../lib/locale.js";
 import { Button } from "./button.js";
 import {
   DropdownMenu,
@@ -10,17 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu.js";
 
-/** The five locales the platform ships, in display order. */
-export const LOCALES = [
-  { code: "ru", label: "Русский", short: "RU" },
-  { code: "en", label: "English", short: "EN" },
-  { code: "uz", label: "O'zbekcha", short: "UZ" },
-  { code: "tg", label: "Тоҷикӣ", short: "TJ" },
-  { code: "ky", label: "Кыргызча", short: "KG" },
-] as const;
-
-export type Locale = (typeof LOCALES)[number]["code"];
-
 export interface LanguageSwitcherProps {
   value: Locale;
   onValueChange: (locale: Locale) => void;
@@ -29,9 +19,8 @@ export interface LanguageSwitcherProps {
 
 /**
  * Purely presentational — the caller owns the locale state, so this works both with
- * next-intl (landing) and with the client-context i18n the subservices use. Previously
- * each app carried its own copy of a five-button row; a dropdown scales past five and is
- * stock shadcn.
+ * next-intl (landing) and with the client-context i18n the subservices use. The locale list
+ * and the shared cookie live in lib/locale.
  */
 export function LanguageSwitcher({ value, onValueChange, className }: LanguageSwitcherProps) {
   const current = LOCALES.find((l) => l.code === value) ?? LOCALES[0];
