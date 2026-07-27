@@ -28,9 +28,18 @@ const en = {
   "add.placeholder":
     "https://instagram.com/reel/XXXX/ | cafe in Seongsu\nhttps://instagram.com/reel/YYYY/ | 광장시장 먹자골목",
   "add.submit": "Add",
+  "add.submitN": "Add {n} reels",
+  "add.another": "Another reel",
+  "add.remove": "Remove",
+  "add.notePlaceholder":
+    "Anything you know: name, address, district, price, opening hours. The address is what resolves the place most reliably.",
   "add.added": "Added {n}",
   "add.duplicates": "{n} already there",
-  "add.invalid": "{n} lines were not Instagram links",
+  "add.invalid": "{n} were not Instagram links",
+  "queue.summary": "What it is",
+  "queue.watch": "Watch",
+  "queue.noVideo": "Video unavailable",
+  "queue.caption": "Caption",
 
   "queue.title": "Review",
   "queue.empty": "Nothing waiting. Add some reels.",
@@ -84,9 +93,18 @@ const ru = {
   "add.placeholder":
     "https://instagram.com/reel/XXXX/ | кафе в Соннсу\nhttps://instagram.com/reel/YYYY/ | 광장시장 먹자골목",
   "add.submit": "Добавить",
+  "add.submitN": "Добавить {n}",
+  "add.another": "Ещё рилс",
+  "add.remove": "Убрать",
+  "add.notePlaceholder":
+    "Всё, что знаешь: название, адрес, район, цена, часы работы. Адрес резолвит место надёжнее всего.",
   "add.added": "Добавлено: {n}",
   "add.duplicates": "Уже было: {n}",
   "add.invalid": "Не ссылки на Instagram: {n}",
+  "queue.summary": "Что это",
+  "queue.watch": "Смотреть",
+  "queue.noVideo": "Видео недоступно",
+  "queue.caption": "Подпись",
 
   "queue.title": "Разбор",
   "queue.empty": "Очередь пуста. Добавь рилсов.",

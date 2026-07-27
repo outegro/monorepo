@@ -32,6 +32,36 @@ export interface ReelMeta {
 export class ReelMetaService {
   private readonly logger = new Logger(ReelMetaService.name);
 
+  /**
+   * Playable video + poster for one reel, resolved fresh. Instagram signs these URLs and expires
+   * them within hours, which is exactly why nothing is cached: a stored link would rot, and
+   * storing the file itself buys little for a video watched once during review.
+   */
+  async mediaUrls(url: string): Promise<{ videoUrl: string | null; thumbnail: string | null }> {
+    try {
+      const { stdout } = await exec(
+        "yt-dlp",
+        [
+          "--skip-download",
+          "--dump-single-json",
+          "--no-warnings",
+          "--no-playlist",
+          "--socket-timeout",
+          "20",
+          "--retries",
+          "2",
+          url,
+        ],
+        { timeout: 45_000, maxBuffer: 8 * 1024 * 1024 },
+      );
+      const j = JSON.parse(stdout) as { url?: string; thumbnail?: string };
+      return { videoUrl: j.url ?? null, thumbnail: j.thumbnail ?? null };
+    } catch (error) {
+      this.logger.warn(`yt-dlp could not resolve media for ${url}: ${String(error).slice(0, 200)}`);
+      return { videoUrl: null, thumbnail: null };
+    }
+  }
+
   async fetch(url: string): Promise<ReelMeta> {
     try {
       const { stdout } = await exec(

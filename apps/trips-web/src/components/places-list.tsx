@@ -37,17 +37,23 @@ export function PlacesList() {
     );
   }
 
-  // Group by trip day; unscheduled places sink to the bottom under their own heading.
-  const byDay = new Map<number | null, Place[]>();
+  // Group by category rather than by day: a place no longer carries a day of its own, and the
+  // catalogue's job is "what have we got", while "when are we going" is the plan's job.
+  // Whether a place IS scheduled still shows, as a badge, read from its trip items.
+  const byCategory = new Map<string, Place[]>();
   for (const p of items) {
-    const key = p.day ?? null;
-    byDay.set(key, [...(byDay.get(key) ?? []), p]);
+    const key = p.categoryGroup ?? "OTHER";
+    byCategory.set(key, [...(byCategory.get(key) ?? []), p]);
   }
-  const days = [...byDay.keys()].sort((a, b) => {
-    if (a === null) return 1;
-    if (b === null) return -1;
-    return a - b;
-  });
+  const categories = [...byCategory.keys()].sort();
+  const CATEGORY_LABEL: Record<string, string> = {
+    FD6: "Food",
+    CE7: "Cafes",
+    AT4: "Attractions",
+    CT1: "Culture",
+    AD5: "Stays",
+    OTHER: "Other",
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -56,17 +62,27 @@ export function PlacesList() {
         <Badge variant="secondary">{t("places.count", { n: items.length })}</Badge>
       </div>
 
-      {days.map((day) => (
-        <section key={String(day)} className="flex flex-col gap-2">
+      {categories.map((cat) => (
+        <section key={cat} className="flex flex-col gap-2">
           <h2 className="font-medium text-muted-foreground text-sm">
-            {day === null ? t("places.noDay") : `${t("places.day")} ${day}`}
+            {CATEGORY_LABEL[cat] ?? cat}
           </h2>
-          {(byDay.get(day) ?? []).map((p) => (
+          {(byCategory.get(cat) ?? []).map((p) => (
             <Card key={p.id}>
               <CardContent className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{p.name}</span>
+                    {p.tripItems && p.tripItems.length > 0 ? (
+                      <Badge variant="secondary">
+                        {p.tripItems.length === 1
+                          ? new Date(p.tripItems[0]?.day.date ?? "").toLocaleDateString("en", {
+                              day: "numeric",
+                              month: "short",
+                            })
+                          : `${p.tripItems.length} days`}
+                      </Badge>
+                    ) : null}
                     {p.categoryGroup ? (
                       <Badge variant="secondary">{t(`cat.${p.categoryGroup}` as TKey)}</Badge>
                     ) : null}

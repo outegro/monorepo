@@ -34,8 +34,8 @@ export function usePlaces() {
 export function useSubmitBatch() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (text: string) =>
-      tfetch<BatchResult>("/reels/batch", { method: "POST", body: JSON.stringify({ text }) }),
+    mutationFn: (input: { reels: { url: string; note?: string }[] }) =>
+      tfetch<BatchResult>("/reels/batch", { method: "POST", body: JSON.stringify(input) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["queue"] });
       qc.invalidateQueries({ queryKey: ["counts"] });
@@ -191,5 +191,21 @@ export function useAttachPlace(tripId: string) {
         body: JSON.stringify({ placeId: input.placeId }),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["trip", tripId] }),
+  });
+}
+
+/**
+ * Playable URLs for one reel, fetched only when the card is opened. Instagram signs these and
+ * expires them within hours, so they are never stored — resolving fresh is both simpler and
+ * more reliable than keeping a copy that rots.
+ */
+export function useReelMedia(reelId: string | null) {
+  return useQuery({
+    queryKey: ["reel-media", reelId],
+    queryFn: () =>
+      tfetch<{ videoUrl: string | null; thumbnail: string | null }>(`/reels/${reelId}/media`),
+    enabled: Boolean(reelId),
+    staleTime: 10 * 60 * 1000,
+    retry: false,
   });
 }

@@ -49,10 +49,29 @@ export function parseBatchLine(line: string): { url: string; note?: string } | n
   return { url, note: note ? note : undefined };
 }
 
-export const submitBatchSchema = z.object({
-  /** Raw textarea contents — one reel per line, `<url>` or `<url> | <note>`. */
-  text: z.string().min(1).max(200_000),
-});
+/**
+ * One reel as entered in the form: its link, and everything the sender knew about it.
+ * The note is a whole paragraph, not a trailing fragment — an address, opening hours and a
+ * price do not fit after a pipe on one line, and those are exactly the fields that resolve a
+ * place. `text` remains for pasting a block of bare links.
+ */
+export const submitBatchSchema = z
+  .object({
+    reels: z
+      .array(
+        z.object({
+          url: z.string().min(1).max(500),
+          note: z.string().max(4000).optional(),
+        }),
+      )
+      .max(300)
+      .optional(),
+    /** Fallback: a pasted block, one reel per line, `<url>` or `<url> | <note>`. */
+    text: z.string().max(200_000).optional(),
+  })
+  .refine((v) => (v.reels?.length ?? 0) > 0 || Boolean(v.text?.trim()), {
+    message: "nothing to submit",
+  });
 export type SubmitBatchInput = z.infer<typeof submitBatchSchema>;
 
 export const updateNoteSchema = z.object({ note: z.string().max(2000).nullable() });
@@ -71,6 +90,14 @@ export const extractionSchema = z.object({
   /** Area name, e.g. "성수동", "Hongdae". Tried as one query among several, never alone. */
   district: z.string().max(120).optional(),
   priceHint: z.string().max(200).optional(),
+  /**
+   * One line of English describing what this place actually is, for the review screen. Kakao
+   * answers entirely in Korean — correct for a taxi, useless for deciding at a glance whether
+   * this is the all-you-can-eat BBQ you saved or a different one in the same building.
+   */
+  summary: z.string().max(300).optional(),
+  /** Romanised or English name, when the source gives one. The Korean name stays authoritative. */
+  nameEn: z.string().max(160).optional(),
   /** Walking time in minutes, if the text states one ("2시간", "약 3시간 코스"). */
   durationMin: z.number().int().min(1).max(2880).optional(),
   /** Length in km, if stated. */
@@ -131,7 +158,6 @@ export const confirmSchema = z.object({
   candidate: candidateSchema.optional(),
   priceNote: z.string().max(200).nullable().optional(),
   tags: z.array(z.string().max(40)).max(20).optional(),
-  day: z.number().int().min(1).max(60).nullable().optional(),
   kind: placeKindSchema.optional(),
   /**
    * For a ROUTE. If one carries role "start", the place's lat/lng is moved onto it — otherwise
@@ -154,8 +180,6 @@ export const updatePlaceSchema = z.object({
   waypoints: z.array(waypointSchema).max(20).optional(),
   durationMin: z.number().int().min(1).max(2880).nullable().optional(),
   distanceKm: z.number().min(0).max(500).nullable().optional(),
-  day: z.number().int().min(1).max(60).nullable().optional(),
-  orderInDay: z.number().int().min(0).max(500).nullable().optional(),
   priceNote: z.string().max(200).nullable().optional(),
   tags: z.array(z.string().max(40)).max(20).optional(),
 });
