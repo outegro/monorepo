@@ -68,3 +68,67 @@ export interface BatchResult {
   duplicates: number;
   invalid: string[];
 }
+
+// ── trip plan ────────────────────────────────────────────────────────────────
+
+export interface TripMember {
+  userId: string;
+  label: string | null;
+  role: "OWNER" | "MEMBER";
+}
+
+export interface TripVote {
+  itemId: string;
+  userId: string;
+  value: number;
+}
+
+export interface TripItem {
+  id: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  title: string;
+  titleKr: string | null;
+  details: string | null;
+  address: string | null;
+  addressKr: string | null;
+  lat: number | null;
+  lng: number | null;
+  cost: string | null;
+  bookingUrl: string | null;
+  /** Items sharing a group are alternatives the team picks between, not a sequence. */
+  optionGroup: string | null;
+  optionLabel: string | null;
+  chosen: boolean;
+  placeId: string | null;
+  place: {
+    id: string;
+    name: string;
+    lat: number;
+    lng: number;
+    kind: "SPOT" | "ROUTE";
+    categoryGroup: string | null;
+    kakaoUrl: string | null;
+  } | null;
+  votes: TripVote[];
+}
+
+export interface TripDay {
+  id: string;
+  date: string;
+  title: string | null;
+  city: string | null;
+  items: TripItem[];
+}
+
+export interface Trip {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  baseName: string | null;
+  baseAddress: string | null;
+  inviteCode: string;
+  members: TripMember[];
+  days: TripDay[];
+}

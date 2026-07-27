@@ -150,8 +150,150 @@ model Place {
   /// The dedupe key. Kakao's place id is stable, so "same place" is decided by Kakao rather
   /// than by comparing names — 스타벅스 exists a hundred times over and name matching would
   /// merge places that merely share a brand.
+  tripItems TripItem[]
+
   @@unique([userId, kakaoId])
   @@index([userId, day])
   @@index([userId, categoryGroup])
   @@map("places")
+}
+
+// ─────────────────────────────────────────────────────────── the trip itself
+//
+// The catalogue above answers "where could we go". This half answers "what are we doing on
+// Tuesday", and it is the part that gets opened on a phone in Seoul. The itinerary is authored
+// outside the app (a real plan existed before this service did) and imported; the app's job is
+// to show it, let a team choose between alternatives, and hang saved places off it.
+
+enum TripRole {
+  OWNER
+  MEMBER
+
+  @@map("trip_role")
+}
+
+model Trip {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+  /// Where we sleep — shown at the top of every day so "how do I get home" is one tap away.
+  baseName    String? @map("base_name")
+  baseAddress String? @map("base_address")
+  baseLat     Float?  @map("base_lat")
+  baseLng     Float?  @map("base_lng")
+
+  /// Short human-typeable code. This is a two-person trip; a full invite-token flow would be
+  /// more ceremony than the thing it protects, and the trip contains no secrets.
+  inviteCode String @unique @map("invite_code")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  members TripMember[]
+  days    TripDay[]
+
+  @@map("trips")
+}
+
+model TripMember {
+  tripId   String   @map("trip_id") @db.Uuid
+  trip     Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  userId   String   @map("user_id") @db.Uuid
+  /// Denormalised so a day view can label a vote without calling auth for every row.
+  label    String?
+  role     TripRole @default(MEMBER)
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  votes Vote[]
+
+  @@id([tripId, userId])
+  @@map("trip_members")
+}
+
+model TripDay {
+  id     String   @id @default(uuid()) @db.Uuid
+  tripId String   @map("trip_id") @db.Uuid
+  trip   Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  date   DateTime @db.Date
+  /// "Arrival + Hongdae", "Hallasan + Jungmun Beach" — the day's headline from the itinerary.
+  title  String?
+  /// Seoul / Jeju / Yangyang. Drives the map's starting viewport.
+  city   String?
+
+  items TripItem[]
+
+  @@unique([tripId, date])
+  @@map("trip_days")
+}
+
+model TripItem {
+  id     String  @id @default(uuid()) @db.Uuid
+  dayId  String  @map("day_id") @db.Uuid
+  day    TripDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+
+  /// Local wall-clock strings ("08:25", "10:15"), not timestamps. The trip spans one timezone,
+  /// the source is a printed plan, and half the entries are open-ended ("20:00 onwards") —
+  /// modelling these as instants would invent a precision the plan does not have.
+  startsAt String? @map("starts_at")
+  endsAt   String? @map("ends_at")
+
+  title   String
+  /// Korean name, kept separate: it is what you show a taxi driver.
+  titleKr String? @map("title_kr")
+  /// Route, notes, what to do — free text straight from the itinerary.
+  details String?
+
+  address   String? 
+  addressKr String? @map("address_kr")
+  lat       Float?
+  lng       Float?
+
+  /// "₩17,000 per person", "US$27.05" — text, because the plan quotes them inconsistently.
+  cost       String?
+  bookingUrl String? @map("booking_url")
+
+  /// Items sharing a group are ALTERNATIVES, not a sequence: the itinerary already works this
+  /// way ("NORMAL OPTION" vs "ABSOLUTELY WRECKED OPTION", full vs short Hallasan route). Null
+  /// means the item simply happens.
+  optionGroup   String? @map("option_group")
+  /// Label for the alternative within its group.
+  optionLabel   String? @map("option_label")
+  /// Set once the team settles on one. Advisory — nothing enforces a single winner, because on
+  /// the day you sometimes do neither.
+  chosen        Boolean @default(false)
+
+  /// A place saved from a reel, slotted into the plan.
+  placeId String? @map("place_id") @db.Uuid
+  place   Place?  @relation(fields: [placeId], references: [id], onDelete: SetNull)
+
+  /// Manual ordering inside a day, since not everything has a start time.
+  position Int @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  votes Vote[]
+
+  @@index([dayId, position])
+  @@index([optionGroup])
+  @@map("trip_items")
+}
+
+/// Who wants what. The whole point of the team: on an alternative you can see, before the day
+/// arrives, that one of you wants the full Hallasan route and the other does not.
+model Vote {
+  itemId String   @map("item_id") @db.Uuid
+  item   TripItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  tripId String   @map("trip_id") @db.Uuid
+  userId String   @map("user_id") @db.Uuid
+  member TripMember @relation(fields: [tripId, userId], references: [tripId, userId], onDelete: Cascade)
+
+  /// -1 rather than a plain like: "I would skip this" is as useful to see as "I want this".
+  value     Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([itemId, userId])
+  @@index([tripId, userId])
+  @@map("votes")
 }

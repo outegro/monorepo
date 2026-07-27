@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { BatchResult, Candidate, CategoryGroup, Place, Reel } from "./types";
+import type { BatchResult, Candidate, CategoryGroup, Place, Reel, Trip, TripItem } from "./types";
 
 async function tfetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api/trips${path}`, {
@@ -123,5 +123,73 @@ export function useDeletePlace() {
       qc.invalidateQueries({ queryKey: ["places"] });
       qc.invalidateQueries({ queryKey: ["queue"] });
     },
+  });
+}
+
+// ── trip plan ────────────────────────────────────────────────────────────────
+
+export function useTrips() {
+  return useQuery({ queryKey: ["trips"], queryFn: () => tfetch<Trip[]>("/trips") });
+}
+
+export function useTrip(tripId: string | null) {
+  return useQuery({
+    queryKey: ["trip", tripId],
+    queryFn: () => tfetch<Trip>(`/trips/${tripId}`),
+    enabled: Boolean(tripId),
+  });
+}
+
+export function useImportKorea() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (label?: string) =>
+      tfetch<Trip>("/trips/import/korea-2026", {
+        method: "POST",
+        body: JSON.stringify({ label }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trips"] }),
+  });
+}
+
+export function useJoinTrip() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { inviteCode: string; label?: string }) =>
+      tfetch<Trip>("/trips/join", { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trips"] }),
+  });
+}
+
+export function useVote(tripId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { itemId: string; value: number }) =>
+      tfetch<{ ok: true }>(`/trips/${tripId}/items/${input.itemId}/vote`, {
+        method: "POST",
+        body: JSON.stringify({ value: input.value }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trip", tripId] }),
+  });
+}
+
+export function useChooseOption(tripId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId: string) =>
+      tfetch<{ ok: true }>(`/trips/${tripId}/items/${itemId}/choose`, { method: "POST" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trip", tripId] }),
+  });
+}
+
+export function useAttachPlace(tripId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { dayId: string; placeId: string }) =>
+      tfetch<TripItem>(`/trips/${tripId}/days/${input.dayId}/places`, {
+        method: "POST",
+        body: JSON.stringify({ placeId: input.placeId }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trip", tripId] }),
   });
 }
