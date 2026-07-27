@@ -37,23 +37,37 @@ export class ReelsService {
    * never fails the batch — pasting 100 links and losing all of them to one typo would be
    * the single most annoying possible failure mode here.
    */
-  async submitBatch(userId: string, text: string): Promise<BatchResult> {
+  async submitBatch(
+    userId: string,
+    input: { reels?: { url: string; note?: string }[]; text?: string },
+  ): Promise<BatchResult> {
     const invalid: string[] = [];
     const rows: { userId: string; url: string; shortcode: string; note: string | null }[] = [];
     const seen = new Set<string>();
 
-    for (const line of text.split(/\r?\n/)) {
+    // Form entries first, then anything pasted as a block. Both end up in the same shape.
+    const entries: { url: string; note?: string }[] = [...(input.reels ?? [])];
+    for (const line of (input.text ?? "").split(/\r?\n/)) {
       const parsed = parseBatchLine(line);
-      if (!parsed) continue;
+      if (parsed) entries.push(parsed);
+    }
+
+    for (const parsed of entries) {
+      if (!parsed.url.trim()) continue;
       const shortcode = parseShortcode(parsed.url);
       if (!shortcode) {
-        invalid.push(line.trim().slice(0, 120));
+        invalid.push(parsed.url.trim().slice(0, 120));
         continue;
       }
       // Dedupe inside the paste itself before hitting the DB constraint.
       if (seen.has(shortcode)) continue;
       seen.add(shortcode);
-      rows.push({ userId, url: parsed.url, shortcode, note: parsed.note ?? null });
+      rows.push({
+        userId,
+        url: parsed.url.trim(),
+        shortcode,
+        note: parsed.note?.trim() || null,
+      });
     }
 
     if (rows.length === 0) return { created: 0, duplicates: 0, invalid };
@@ -180,6 +194,20 @@ export class ReelsService {
       _count: { _all: true },
     });
     return Object.fromEntries(grouped.map((g) => [g.status, g._count._all]));
+  }
+
+  /**
+   * Fresh playable URLs for a reel, resolved on demand.
+   *
+   * Deliberately not stored. Instagram's CDN links are signed and short-lived, so a copy in our
+   * own bucket would need downloading, storing and serving ~5MB per reel — for a two-week trip
+   * where the video is watched once, during review, to remember why it was saved. Resolving
+   * takes about two seconds and is always current.
+   */
+  async media(userId: string, id: string) {
+    const reel = await this.prisma.reel.findFirst({ where: { id, userId } });
+    if (!reel) throw new NotFoundException({ code: "reel_not_found" });
+    return this.reelMeta.mediaUrls(reel.url);
   }
 
   /** Re-run Kakao with a query the reviewer typed by hand, when the guess was useless. */

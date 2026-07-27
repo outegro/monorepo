@@ -37,7 +37,7 @@ export class ReelsController {
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(submitBatchSchema)) body: SubmitBatchInput,
   ) {
-    return this.reels.submitBatch(user.userId, body.text);
+    return this.reels.submitBatch(user.userId, body);
   }
 
   /**
@@ -48,6 +48,12 @@ export class ReelsController {
   @Post("process")
   process(@CurrentUser() user: AuthUser) {
     return this.reels.processPending(user.userId);
+  }
+
+  /** Fresh playable URLs, resolved on demand — see ReelsService.media. */
+  @Get(":id/media")
+  media(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    return this.reels.media(user.userId, id);
   }
 
   @Get("queue")

@@ -20,6 +20,7 @@ export function extractionMessages(note: string, url: string): ChatMessage[] {
         "Return STRICT JSON only, no prose, with these optional keys:\n" +
         '{"query": string, "categoryGroup": "FD6"|"CE7"|"AT4"|"CT1"|"AD5", ' +
         '"address": string, "district": string, "priceHint": string, ' +
+        '"summary": string, "nameEn": string, ' +
         '"durationMin": number, "distanceKm": number, "keywords": string[]}\n\n' +
         "Rules:\n" +
         "- `query` is what Kakao will search for. Prefer the Korean form of a place name: " +
@@ -34,6 +35,12 @@ export function extractionMessages(note: string, url: string): ChatMessage[] {
         "- When a hashtag and an address disagree about the location, TRUST THE ADDRESS. Reels " +
         "are tagged for reach, not accuracy — one measured example tagged #hongdae for a cafe " +
         "whose address was in 명동.\n" +
+        "- `summary`: ONE line of plain English saying what this place is and why someone " +
+        "saved it — 'All-you-can-eat Korean BBQ, 6 beef and 4 pork cuts, salad bar included'. " +
+        "This is read by someone deciding at a glance, so lead with the thing that " +
+        "distinguishes it. Write it even when the source is Russian or Korean.\n" +
+        "- `nameEn`: the romanised or English name if the source gives one. Never invent a " +
+        "translation of a Korean name — omit instead.\n" +
         "- `priceHint`: copy any price the note mentions, verbatim, with its currency.\n" +
         "- `durationMin` / `distanceKm`: only if stated ('약 2시간', '3km 코스'). Hikes and walks " +
         "usually say; restaurants never do. Convert hours to minutes. Do not estimate.\n" +

@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useConfirm, useProcess, useQueue, useResearch, useSkip, useUpdateNote } from "@/lib/api";
 import { type TKey, useI18n } from "@/lib/i18n";
 import type { Reel } from "@/lib/types";
+import { ReelPreview } from "./reel-preview";
 
 /**
  * One reel at a time, keyboard-first. With 100+ reels the bottleneck is not the model or
@@ -130,7 +131,10 @@ export function ReviewQueue() {
         <Card>
           <CardHeader>
             <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-              {reel.note || reel.shortcode}
+              {/* English first: the extracted name if there is one, else whatever was typed.
+                  Kakao answers entirely in Korean, which is right for a taxi and useless for
+                  telling two BBQ places in one building apart at a glance. */}
+              {reel.extracted?.nameEn || reel.note || reel.shortcode}
               {reel.extracted?.categoryGroup ? (
                 <Badge variant="secondary">
                   {t(`cat.${reel.extracted.categoryGroup}` as TKey)}
@@ -154,6 +158,25 @@ export function ReviewQueue() {
           </CardHeader>
 
           <CardContent className="flex flex-col gap-4">
+            {/* What this place actually is, in English, above everything Korean. */}
+            {reel.extracted?.summary ? (
+              <p className="text-sm leading-relaxed">{reel.extracted.summary}</p>
+            ) : null}
+
+            <div className="flex flex-wrap items-start gap-4">
+              <ReelPreview reelId={reel.id} />
+              {reel.caption ? (
+                <details className="min-w-0 flex-1">
+                  <summary className="cursor-pointer text-muted-foreground text-xs">
+                    {t("queue.caption")}
+                    {reel.uploader ? ` · @${reel.uploader}` : ""}
+                  </summary>
+                  <p className="mt-1.5 whitespace-pre-wrap text-muted-foreground text-xs leading-relaxed">
+                    {reel.caption}
+                  </p>
+                </details>
+              ) : null}
+            </div>
             {/* A better note re-runs the whole guess — usually faster than hand-searching. */}
             <div className="flex flex-wrap gap-2">
               <Input

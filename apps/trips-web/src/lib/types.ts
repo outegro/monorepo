@@ -15,6 +15,8 @@ export interface Extraction {
   categoryGroup?: CategoryGroup;
   district?: string;
   priceHint?: string;
+  nameEn?: string;
+  summary?: string;
   keywords?: string[];
 }
 
@@ -36,6 +38,10 @@ export interface Reel {
   url: string;
   shortcode: string;
   note: string | null;
+  /** The reel's own caption, read by yt-dlp at ingest. Usually richer than the note. */
+  caption: string | null;
+  uploader: string | null;
+  thumbnail: string | null;
   status: ReelStatus;
   extracted: Extraction | null;
   candidates: Candidate[] | null;
