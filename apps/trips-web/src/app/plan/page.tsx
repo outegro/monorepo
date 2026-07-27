@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DayPlan } from "@/components/day-plan";
 import { KakaoMap } from "@/components/kakao-map";
+import { NearbyPlaces } from "@/components/nearby-places";
 import { Shell } from "@/components/shell";
 import { useImportKorea, useJoinTrip, useTrip, useTrips } from "@/lib/api";
 
@@ -162,6 +163,7 @@ function PlanView({ meId }: { meId: string }) {
             <KakaoMap points={points} className="h-56 w-full rounded-lg" />
           ) : null}
           <DayPlan day={day} tripId={t.id} members={t.members} meId={meId} />
+          <NearbyPlaces day={day} tripId={t.id} />
         </>
       ) : null}
     </div>

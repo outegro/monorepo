@@ -138,11 +138,9 @@ model Place {
   /// reels quote prices too inconsistently to model as a number.
   priceNote String?  @map("price_note")
   tags      String[] @default([])
-  /// Day of the trip this is planned for (1-based), null = not scheduled yet.
-  day       Int?
-  /// Manual ordering inside a day. No route optimiser in v1 — the trip is days away and
-  /// real travel time in Seoul is transit, not straight-line distance.
-  orderInDay Int? @map("order_in_day")
+  // NB: a place deliberately carries NO day of its own. Scheduling happens by attaching it to
+  // a TripDay (see TripItem.placeId) — two independent notions of "which day" would drift the
+  // moment one of them was edited, and the trip side is the one with the times on it.
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -153,7 +151,6 @@ model Place {
   tripItems TripItem[]
 
   @@unique([userId, kakaoId])
-  @@index([userId, day])
   @@index([userId, categoryGroup])
   @@map("places")
 }

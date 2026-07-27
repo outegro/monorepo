@@ -43,6 +43,12 @@ export interface Reel {
   createdAt: string;
 }
 
+export interface PlaceTripItem {
+  id: string;
+  dayId: string;
+  day: { date: string; title: string | null };
+}
+
 export interface Place {
   id: string;
   reelId: string;
@@ -58,8 +64,8 @@ export interface Place {
   lng: number;
   priceNote: string | null;
   tags: string[];
-  day: number | null;
-  orderInDay: number | null;
+  /** Trip days this place is slotted into. The only scheduling there is. */
+  tripItems?: PlaceTripItem[];
   reel: { url: string; note: string | null };
 }
 

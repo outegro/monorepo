@@ -131,7 +131,6 @@ export const confirmSchema = z.object({
   candidate: candidateSchema.optional(),
   priceNote: z.string().max(200).nullable().optional(),
   tags: z.array(z.string().max(40)).max(20).optional(),
-  day: z.number().int().min(1).max(60).nullable().optional(),
   kind: placeKindSchema.optional(),
   /**
    * For a ROUTE. If one carries role "start", the place's lat/lng is moved onto it — otherwise
@@ -154,8 +153,6 @@ export const updatePlaceSchema = z.object({
   waypoints: z.array(waypointSchema).max(20).optional(),
   durationMin: z.number().int().min(1).max(2880).nullable().optional(),
   distanceKm: z.number().min(0).max(500).nullable().optional(),
-  day: z.number().int().min(1).max(60).nullable().optional(),
-  orderInDay: z.number().int().min(0).max(500).nullable().optional(),
   priceNote: z.string().max(200).nullable().optional(),
   tags: z.array(z.string().max(40)).max(20).optional(),
 });

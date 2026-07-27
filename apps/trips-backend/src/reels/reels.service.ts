@@ -258,7 +258,6 @@ export class ReelsService {
     const curated = {
       ...(input.priceNote !== undefined ? { priceNote: input.priceNote } : {}),
       ...(input.tags !== undefined ? { tags: input.tags } : {}),
-      ...(input.day !== undefined ? { day: input.day } : {}),
       ...(input.durationMin !== undefined ? { durationMin: input.durationMin } : {}),
       ...(input.distanceKm !== undefined ? { distanceKm: input.distanceKm } : {}),
     };
@@ -272,7 +271,6 @@ export class ReelsService {
           ...identity,
           priceNote: input.priceNote ?? this.priceFrom(reel.extracted),
           tags: input.tags ?? [],
-          day: input.day ?? null,
           durationMin: input.durationMin ?? this.numFrom(reel.extracted, "durationMin"),
           distanceKm: input.distanceKm ?? this.numFrom(reel.extracted, "distanceKm"),
         },

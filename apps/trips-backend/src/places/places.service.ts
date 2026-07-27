@@ -17,10 +17,15 @@ export class PlacesService {
   async list(userId: string) {
     return this.prisma.place.findMany({
       where: { userId },
-      orderBy: [{ day: { sort: "asc", nulls: "last" } }, { orderInDay: "asc" }, { name: "asc" }],
+      orderBy: [{ categoryGroup: "asc" }, { name: "asc" }],
       // Every reel that pointed here — the trip UI shows them as a strip under the place, so
       // you can rewatch what made you save it.
       include: {
+        // Which day(s) of the trip this place is slotted into — the only place scheduling
+        // lives now, so the catalogue reads it from here rather than from its own column.
+        tripItems: {
+          select: { id: true, dayId: true, day: { select: { date: true, title: true } } },
+        },
         reels: {
           select: { id: true, url: true, note: true, caption: true, thumbnail: true },
           orderBy: { createdAt: "asc" },
