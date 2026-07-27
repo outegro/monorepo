@@ -19,6 +19,7 @@ const en = {
   "common.delete": "Delete",
   "nav.queue": "Review",
   "nav.places": "Places",
+  "nav.plan": "Plan",
   "nav.signout": "Sign out",
 
   "add.title": "Add reels",
@@ -74,6 +75,7 @@ const ru = {
   "common.delete": "Удалить",
   "nav.queue": "Разбор",
   "nav.places": "Места",
+  "nav.plan": "План",
   "nav.signout": "Выйти",
 
   "add.title": "Добавить рилсы",

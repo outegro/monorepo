@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseBatchLine, parseShortcode } from "./reels.contracts";
+import { guessKind, parseBatchLine, parseShortcode } from "./reels.contracts";
 
 describe("parseShortcode", () => {
   it("accepts every permalink shape Instagram serves the same reel under", () => {
@@ -64,5 +64,24 @@ describe("parseBatchLine", () => {
     expect(parseBatchLine("https://www.instagram.com/reel/A/ |")).toEqual({
       url: "https://www.instagram.com/reel/A/",
     });
+  });
+});
+
+describe("guessKind", () => {
+  it("treats a trail as a route", () => {
+    expect(guessKind("여행 > 관광,명소 > 등산로")).toBe("ROUTE");
+    expect(guessKind("여행 > 관광,명소 > 둘레길")).toBe("ROUTE");
+  });
+
+  // A peak is where a route ENDS, not the route. Getting this wrong is what makes navigation
+  // aim at a mountaintop instead of the trailhead car park.
+  it("treats a peak as a spot", () => {
+    expect(guessKind("여행 > 관광,명소 > 산봉우리")).toBe("SPOT");
+  });
+
+  it("defaults to spot for restaurants and for nothing at all", () => {
+    expect(guessKind("음식점 > 한식 > 육류,고기")).toBe("SPOT");
+    expect(guessKind(null)).toBe("SPOT");
+    expect(guessKind(undefined)).toBe("SPOT");
   });
 });

@@ -10,6 +10,7 @@ import { MetricsModule } from "./metrics/metrics.module";
 import { PlacesModule } from "./places/places.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { ReelsModule } from "./reels/reels.module";
+import { TripModule } from "./trip/trip.module";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -30,6 +31,7 @@ const isProd = process.env.NODE_ENV === "production";
     KakaoModule,
     PlacesModule,
     ReelsModule,
+    TripModule,
     MetricsModule,
     HealthModule,
   ],

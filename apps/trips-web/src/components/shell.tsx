@@ -63,6 +63,9 @@ function Header() {
           <Button variant="ghost" size="sm" asChild>
             <Link href="/places">{t("nav.places")}</Link>
           </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/plan">{t("nav.plan")}</Link>
+          </Button>
           <LangSwitch />
           <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
             {t("nav.signout")}

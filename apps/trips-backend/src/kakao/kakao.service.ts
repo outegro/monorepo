@@ -42,22 +42,56 @@ export class KakaoService {
   }
 
   /**
-   * Keyword search. `district` is prepended rather than passed as a coordinate box: the notes
-   * give us area names ("성수동", "Hongdae"), not coordinates, and Kakao's own relevance
-   * handles "성수동 카페 어니언" better than an arbitrary radius would.
+   * Find candidates for one reel. Runs several queries and merges them, because no single
+   * query shape wins — measured against real reels on 2026-07-27:
+   *
+   * - An ADDRESS from the note is the strongest signal by far, but only with a category
+   *   filter. Bare "명동10길 19-3" returns the hardware shop, the noodle place and the gimbap
+   *   counter in the same building; the same address with CE7 returns the cat cafe we wanted.
+   * - Prepending the district ACTIVELY BREAKS some searches. "월악산 제비봉" returns zero —
+   *   Kakao parses 월악산 as a region and looks for 제비봉 inside it, and the peak is
+   *   administratively in 단양군, not 제천시. Bare "제비봉" finds it immediately. So the
+   *   district-qualified query is one attempt among several, never the only one.
+   *
+   * Ordering matters: earlier queries are more trustworthy, and the reviewer reads top-down.
    */
-  async search(query: string, opts: { categoryGroup?: CategoryGroup; district?: string } = {}) {
+  async search(
+    query: string,
+    opts: { categoryGroup?: CategoryGroup; district?: string; address?: string } = {},
+  ): Promise<Candidate[]> {
     if (!this.apiKey) return [];
 
-    const q = [opts.district, query].filter(Boolean).join(" ").trim();
-    if (!q) return [];
+    const attempts: { q: string; cat?: CategoryGroup }[] = [];
+    if (opts.address) {
+      attempts.push({ q: opts.address, cat: opts.categoryGroup });
+      // Without the filter too: the category guess can be wrong, and a right address with a
+      // wrong category would otherwise hide the answer completely.
+      if (opts.categoryGroup) attempts.push({ q: opts.address });
+    }
+    if (query) {
+      attempts.push({ q: query, cat: opts.categoryGroup });
+      if (opts.district) attempts.push({ q: `${opts.district} ${query}`, cat: opts.categoryGroup });
+    }
+
+    const merged = new Map<string, Candidate>();
+    for (const a of attempts) {
+      if (merged.size >= 12) break;
+      for (const c of await this.searchOnce(a.q, a.cat)) {
+        if (!merged.has(c.kakaoId)) merged.set(c.kakaoId, c);
+      }
+    }
+    return [...merged.values()].slice(0, 12);
+  }
+
+  private async searchOnce(q: string, categoryGroup?: CategoryGroup): Promise<Candidate[]> {
+    const trimmed = q.trim();
+    if (!trimmed) return [];
 
     const url = new URL(`${this.baseUrl}/v2/local/search/keyword.json`);
-    url.searchParams.set("query", q);
-    url.searchParams.set("size", "10");
-    // Bias towards Korea; Kakao only indexes Korea anyway, this just steadies the ranking.
+    url.searchParams.set("query", trimmed);
+    url.searchParams.set("size", "5");
     url.searchParams.set("sort", "accuracy");
-    if (opts.categoryGroup) url.searchParams.set("category_group_code", opts.categoryGroup);
+    if (categoryGroup) url.searchParams.set("category_group_code", categoryGroup);
 
     let res: Response;
     try {
@@ -66,11 +100,15 @@ export class KakaoService {
         signal: AbortSignal.timeout(8000),
       });
     } catch (error) {
-      this.logger.error(`kakao search failed for "${q}": ${String(error)}`);
+      this.logger.error(`kakao search failed for "${trimmed}": ${String(error)}`);
       return [];
     }
     if (!res.ok) {
-      this.logger.error(`kakao ${res.status} for "${q}": ${(await res.text()).slice(0, 200)}`);
+      const body = (await res.text()).slice(0, 200);
+      // 403 here almost always means the app has Kakao Map switched off in the console
+      // (errorType NotAuthorizedError, "disabled OPEN_MAP_AND_LOCAL service") rather than a
+      // bad key — worth saying out loud, it is a one-toggle fix that looks like an auth bug.
+      this.logger.error(`kakao ${res.status} for "${trimmed}": ${body}`);
       return [];
     }
 

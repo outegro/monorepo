@@ -9,6 +9,11 @@ export interface MapPoint {
   lng: number;
   /** 1-based position within the day; drawn inside the marker when present. */
   order?: number;
+  /**
+   * Ordered stops for a ROUTE place. Drawn as a line so a trail reads as the path it is —
+   * `lat`/`lng` above is the trailhead, i.e. the end you actually travel to.
+   */
+  waypoints?: { name: string; lat: number; lng: number }[];
 }
 
 /**
@@ -25,6 +30,7 @@ declare global {
         load: (cb: () => void) => void;
         LatLng: new (lat: number, lng: number) => unknown;
         LatLngBounds: new () => { extend: (ll: unknown) => void };
+        Polyline: new (opts: Record<string, unknown>) => { setMap: (m: unknown) => void };
         Map: new (
           el: HTMLElement,
           opts: Record<string, unknown>,
@@ -88,6 +94,21 @@ export function KakaoMap({ points, className }: { points: MapPoint[]; className?
         for (const p of points) {
           const ll = new maps.LatLng(p.lat, p.lng);
           bounds.extend(ll);
+
+          if (p.waypoints && p.waypoints.length > 1) {
+            const path = p.waypoints.map((w) => {
+              const wll = new maps.LatLng(w.lat, w.lng);
+              bounds.extend(wll);
+              return wll;
+            });
+            new maps.Polyline({
+              path,
+              strokeWeight: 4,
+              strokeColor: "#111",
+              strokeOpacity: 0.75,
+              strokeStyle: "shortdash",
+            }).setMap(map);
+          }
           // A CustomOverlay rather than a Marker: it can carry the day-order number, which is
           // the only thing that makes a multi-stop day readable at a glance.
           new maps.CustomOverlay({
