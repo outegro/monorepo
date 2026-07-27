@@ -1,0 +1,110 @@
+// trips-backend schema — a catalogue of places harvested from Instagram Reels, built for a
+// specific trip. The pipeline is: a reel URL (+ an optional free-text note) comes in, the LLM
+// turns the note into a search query, Kakao Local returns candidates, and a HUMAN confirms
+// which candidate is the real place. Nothing reaches `places` without that confirmation —
+// auto-resolution is wrong often enough that unreviewed rows would poison the trip plan.
+//
+// Instagram is fully login-walled: og:meta, /embed/captioned/ and oEmbed all return nothing
+// useful anonymously (verified 2026-07-27). So the note is the ONLY signal besides the URL,
+// and a reel submitted without one usually stays unresolved until a human types something.
+//
+// All rows scoped by `userId` (auth `sub`); trips owns its own database, no cross-service FK.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ReelStatus {
+  // Just submitted; nothing has looked at it yet.
+  PENDING
+  // LLM produced a search query + guessed category from the note.
+  EXTRACTED
+  // Kakao returned candidates and a human needs to pick one.
+  NEEDS_REVIEW
+  // A human picked a candidate → a Place row exists.
+  CONFIRMED
+  // A human decided this reel is not worth a place (duplicate, not in Korea, junk).
+  SKIPPED
+  // Extraction or search failed; `error` says why. Retryable.
+  FAILED
+
+  @@map("reel_status")
+}
+
+// One submitted reel. `shortcode` is parsed out of the URL and is what we dedupe on —
+// the same reel shared twice (by both of us) must not become two places.
+model Reel {
+  id        String     @id @default(uuid()) @db.Uuid
+  userId    String     @map("user_id") @db.Uuid
+  url       String
+  shortcode String
+  /// Free-text hint typed by whoever submitted it: place name, district, "카페 in 성수",
+  /// anything. The single most valuable field in the whole service.
+  note      String?
+  status    ReelStatus @default(PENDING)
+  /// LLM output: { query, categoryGroup, district, priceHint, keywords[] }. Kept raw so a
+  /// prompt change can be re-run over old rows without a migration.
+  extracted Json?
+  /// Kakao Local hits offered to the reviewer, in rank order. Cleared after confirmation.
+  candidates Json?
+  error     String?
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  place Place?
+
+  // Dedupe per user, not globally — two people may legitimately track the same reel.
+  @@unique([userId, shortcode])
+  // The review queue reads exactly this.
+  @@index([userId, status])
+  @@map("reels")
+}
+
+// A confirmed, real place with coordinates. This is what the trip is actually planned from.
+model Place {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  reelId String @unique @map("reel_id") @db.Uuid
+  reel   Reel   @relation(fields: [reelId], references: [id], onDelete: Cascade)
+
+  /// Kakao's own place id — lets us re-open the place in KakaoMap and dedupe across reels.
+  kakaoId       String  @map("kakao_id")
+  name          String
+  /// Kakao category group code: FD6 food, CE7 cafe, AT4 attraction, CT1 culture, …
+  categoryGroup String? @map("category_group")
+  /// Kakao's full category path, e.g. "음식점 > 카페 > 커피전문점".
+  categoryName  String? @map("category_name")
+  address       String?
+  roadAddress   String? @map("road_address")
+  phone         String?
+  /// Kakao place page; the map.kakao.com/link deep link for navigation is built from lat/lng.
+  kakaoUrl      String? @map("kakao_url")
+
+  /// WGS84. Plain floats on purpose: at ~100 places PostGIS would be ceremony, and the only
+  /// geometry we do is "group things that are near each other".
+  lat Float
+  lng Float
+
+  /// Free-text price hint from the note ("15,000원 per person"), kept as text deliberately —
+  /// reels quote prices too inconsistently to model as a number.
+  priceNote String?  @map("price_note")
+  tags      String[] @default([])
+  /// Day of the trip this is planned for (1-based), null = not scheduled yet.
+  day       Int?
+  /// Manual ordering inside a day. No route optimiser in v1 — the trip is days away and
+  /// real travel time in Seoul is transit, not straight-line distance.
+  orderInDay Int? @map("order_in_day")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId, day])
+  @@index([userId, categoryGroup])
+  @@map("places")
+}

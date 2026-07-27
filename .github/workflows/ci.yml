@@ -52,6 +52,8 @@ jobs:
           - { app: budget-web, dockerfile: infra/Dockerfile.next }
           - { app: itmaxxing-backend, dockerfile: infra/Dockerfile.nest }
           - { app: itmaxxing-web, dockerfile: infra/Dockerfile.next }
+          - { app: trips-backend, dockerfile: infra/Dockerfile.nest }
+          - { app: trips-web, dockerfile: infra/Dockerfile.next }
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
