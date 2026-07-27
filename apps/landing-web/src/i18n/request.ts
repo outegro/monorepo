@@ -1,18 +1,17 @@
+import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE } from "@outegro/ui";
 import { cookies } from "next/headers";
 import { getRequestConfig } from "next-intl/server";
 
-const locales = ["en", "ru", "uz", "tg", "ky"] as const;
-type Locale = (typeof locales)[number];
-const defaultLocale: Locale = "ru";
-
 /**
- * Single-locale-aware config (no URL-based routing). Locale is read from a cookie;
- * add the next-intl middleware later if you want `/en` / `/ru` path segments.
+ * Single-locale-aware config (no URL-based routing). The locale comes from the platform's
+ * shared `og_locale` cookie — the same one the subservices read — rather than next-intl's
+ * default `NEXT_LOCALE`, so a language chosen on id.outegro.com also applies here.
+ * Add the next-intl middleware later if you want `/en` / `/ru` path segments.
  */
 export default getRequestConfig(async () => {
   const cookieStore = await cookies();
-  const candidate = cookieStore.get("NEXT_LOCALE")?.value as Locale | undefined;
-  const locale = candidate && locales.includes(candidate) ? candidate : defaultLocale;
+  const candidate = cookieStore.get(LOCALE_COOKIE)?.value;
+  const locale = isLocale(candidate) ? candidate : DEFAULT_LOCALE;
 
   return {
     locale,

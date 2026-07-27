@@ -1,14 +1,12 @@
 "use client";
 
-import type { Locale } from "@outegro/ui";
+import { detectInitialLocale, type Locale, writeLocaleCookie } from "@outegro/ui";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export type { Locale };
 
 /**
  * Client i18n for trips — the Korea reel catalogue. Only RU and EN are written out: this is a
- * two-person trip tool and the other platform locales would be dead weight, so uz/tg/ky alias
- * `en` rather than shipping untranslated keys that silently fall back anyway.
  */
 const en = {
   "gate.title": "Trips",
@@ -120,7 +118,7 @@ const ru = {
   "toast.error": "Что-то пошло не так",
 } as const;
 
-const dict = { en, ru, uz: en, tg: en, ky: en } as const;
+const dict = { en, ru } as const;
 
 export type TKey = keyof (typeof dict)["en"];
 
@@ -131,32 +129,19 @@ interface I18nValue {
 }
 
 const I18nContext = createContext<I18nValue | null>(null);
-const COOKIE = "og_locale";
-
-function readCookieLocale(): Locale | null {
-  if (typeof document === "undefined") return null;
-  const m = document.cookie.match(/(?:^|;\s*)og_locale=(en|ru|uz|tg|ky)/);
-  return (m?.[1] as Locale) ?? null;
-}
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("ru");
+  // English until the shared cookie says otherwise; resolved after mount so SSR and
+  // the first client render agree.
+  const [locale, setLocaleState] = useState<Locale>("en");
 
   useEffect(() => {
-    const fromCookie = readCookieLocale();
-    if (fromCookie) {
-      setLocaleState(fromCookie);
-      return;
-    }
-    const lang = navigator.language?.toLowerCase() ?? "";
-    const match = (["uz", "tg", "ky", "en"] as const).find((l) => lang.startsWith(l));
-    if (match) setLocaleState(match);
+    setLocaleState(detectInitialLocale(document.cookie, navigator.language));
   }, []);
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);
-    // biome-ignore lint/suspicious/noDocumentCookie: a plain client-side locale preference cookie, no auth/security relevance
-    document.cookie = `${COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
+    writeLocaleCookie(l);
     document.documentElement.lang = l;
   }, []);
 

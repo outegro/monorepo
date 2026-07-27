@@ -1,15 +1,15 @@
 "use client";
 
-import { LanguageSwitcher, type Locale } from "@outegro/ui";
+import { LanguageSwitcher, type Locale, writeLocaleCookie } from "@outegro/ui";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { useTransition } from "react";
 
 /**
- * next-intl wiring around the shared switcher: persists the choice in the `NEXT_LOCALE`
- * cookie (read server-side by next-intl) and refreshes the route so server components
- * re-render with the new messages. The presentation lives in @outegro/ui so all five
- * frontends offer the same control.
+ * next-intl wiring around the shared switcher: writes the platform-wide `og_locale` cookie
+ * (read server-side in i18n/request.ts) and refreshes the route so server components
+ * re-render with the new messages. Both the cookie and the control live in @outegro/ui, so a
+ * language picked here is the same one every other frontend sees.
  */
 export function LangSwitch({ className }: { className?: string }) {
   const active = useLocale() as Locale;
@@ -17,8 +17,7 @@ export function LangSwitch({ className }: { className?: string }) {
   const [pending, startTransition] = useTransition();
 
   function pick(code: Locale) {
-    // biome-ignore lint/suspicious/noDocumentCookie: a plain client-side locale preference cookie, no auth/security relevance
-    document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=31536000; samesite=lax`;
+    writeLocaleCookie(code);
     startTransition(() => router.refresh());
   }
 
