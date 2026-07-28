@@ -68,6 +68,11 @@ model Reel {
   caption   String?
   uploader  String?
   thumbnail String?
+  /// Direct CDN video URL, captured from the same yt-dlp call as the caption so the review
+  /// list can show the reel inline without a second round trip per card. Instagram signs these
+  /// and they expire within hours — which is fine for the session right after adding, and the
+  /// player falls back to re-resolving on demand when playback fails.
+  videoUrl  String? @map("video_url")
   status    ReelStatus @default(PENDING)
   /// LLM output: { query, categoryGroup, district, priceHint, keywords[] }. Kept raw so a
   /// prompt change can be re-run over old rows without a migration.

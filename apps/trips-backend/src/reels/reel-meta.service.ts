@@ -8,6 +8,8 @@ export interface ReelMeta {
   caption: string | null;
   uploader: string | null;
   thumbnail: string | null;
+  /** Direct CDN URL, captured here so the list can play inline without a second call. */
+  videoUrl: string | null;
   durationSec: number | null;
 }
 
@@ -85,19 +87,21 @@ export class ReelMetaService {
         description?: string;
         uploader?: string;
         thumbnail?: string;
+        url?: string;
         duration?: number;
       };
       return {
         caption: j.description?.trim() || null,
         uploader: j.uploader?.trim() || null,
         thumbnail: j.thumbnail || null,
+        videoUrl: j.url || null,
         durationSec: typeof j.duration === "number" ? Math.round(j.duration) : null,
       };
     } catch (error) {
       // Private account, deleted post, rate limit, yt-dlp missing in a dev shell — all the
       // same to the caller: no caption, carry on.
       this.logger.warn(`yt-dlp could not read ${url}: ${String(error).slice(0, 200)}`);
-      return { caption: null, uploader: null, thumbnail: null, durationSec: null };
+      return { caption: null, uploader: null, thumbnail: null, videoUrl: null, durationSec: null };
     }
   }
 }

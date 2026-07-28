@@ -31,6 +31,7 @@ declare global {
         LatLng: new (lat: number, lng: number) => unknown;
         LatLngBounds: new () => { extend: (ll: unknown) => void };
         Polyline: new (opts: Record<string, unknown>) => { setMap: (m: unknown) => void };
+        StaticMap: new (el: HTMLElement, opts: Record<string, unknown>) => unknown;
         Map: new (
           el: HTMLElement,
           opts: Record<string, unknown>,
@@ -61,6 +62,32 @@ function loadSdk(appKey: string): Promise<void> {
     document.head.appendChild(el);
   });
   return sdkPromise;
+}
+
+/**
+ * SDK loader shared by every map on the page. The key is runtime config (see
+ * app/api/config/route.ts), so it is fetched once and the script injected once — a list with a
+ * map per row must not re-request either.
+ */
+export function useKakaoSdk(): { status: "loading" | "ready" | "unavailable" } {
+  const [status, setStatus] = useState<"loading" | "ready" | "unavailable">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/config")
+      .then((r) => (r.ok ? r.json() : { kakaoJsKey: "" }))
+      .then((c: { kakaoJsKey?: string }) => {
+        if (cancelled) return;
+        if (!c.kakaoJsKey) return setStatus("unavailable");
+        return loadSdk(c.kakaoJsKey).then(() => !cancelled && setStatus("ready"));
+      })
+      .catch(() => !cancelled && setStatus("unavailable"));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { status };
 }
 
 export function KakaoMap({ points, className }: { points: MapPoint[]; className?: string }) {

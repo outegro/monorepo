@@ -42,6 +42,7 @@ export interface Reel {
   caption: string | null;
   uploader: string | null;
   thumbnail: string | null;
+  videoUrl: string | null;
   status: ReelStatus;
   extracted: Extraction | null;
   candidates: Candidate[] | null;

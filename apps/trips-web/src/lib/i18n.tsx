@@ -53,6 +53,7 @@ const en = {
   "queue.noCandidates": "Nothing found — add a note or search by hand.",
   "queue.skip": "Skip",
   "queue.confirm": "This one",
+  "queue.confirmed": "Saved to places",
   "queue.left": "{n} left",
 
   "places.title": "Places",
@@ -118,6 +119,7 @@ const ru = {
   "queue.noCandidates": "Ничего не нашлось — добавь заметку или поищи вручную.",
   "queue.skip": "Пропустить",
   "queue.confirm": "Это оно",
+  "queue.confirmed": "Сохранено в места",
   "queue.left": "Осталось: {n}",
 
   "places.title": "Места",
