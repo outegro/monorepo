@@ -1,10 +1,25 @@
 "use client";
 
 import { Badge, Button, Card, CardContent, cn, Input, Skeleton } from "@outegro/ui";
-import { CheckIcon, ExternalLinkIcon, Loader2Icon, SearchIcon, XIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ExternalLinkIcon,
+  Loader2Icon,
+  SearchIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useConfirm, useProcess, useQueue, useResearch, useSkip, useUpdateNote } from "@/lib/api";
+import {
+  useConfirm,
+  useDeleteReel,
+  useProcess,
+  useQueue,
+  useResearch,
+  useSkip,
+  useUpdateNote,
+} from "@/lib/api";
 import { type TKey, useI18n } from "@/lib/i18n";
 import type { Candidate, Reel } from "@/lib/types";
 import { KakaoStaticMap } from "./kakao-static-map";
@@ -76,6 +91,8 @@ function ReviewCard({ reel }: { reel: Reel }) {
   const research = useResearch();
   const updateNote = useUpdateNote();
 
+  const del = useDeleteReel();
+  const processing = reel.status === "PENDING";
   const candidates = reel.candidates ?? [];
   const [picked, setPicked] = useState(0);
   const [manualQuery, setManualQuery] = useState("");
@@ -103,7 +120,12 @@ function ReviewCard({ reel }: { reel: Reel }) {
                 <Badge variant="outline">{reel.extracted.priceHint}</Badge>
               ) : null}
             </div>
-            {reel.extracted?.summary ? (
+            {processing ? (
+              <p className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Loader2Icon className="size-3.5 animate-spin" />
+                {t("queue.pending")}
+              </p>
+            ) : reel.extracted?.summary ? (
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {reel.extracted.summary}
               </p>
@@ -140,7 +162,7 @@ function ReviewCard({ reel }: { reel: Reel }) {
                 />
               ) : null}
             </div>
-          ) : (
+          ) : processing ? null : (
             <p className="text-muted-foreground text-xs">{t("queue.noCandidates")}</p>
           )}
 
@@ -218,6 +240,19 @@ function ReviewCard({ reel }: { reel: Reel }) {
                 <ExternalLinkIcon />
                 {reel.shortcode}
               </a>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={del.isPending}
+              className="ml-auto text-muted-foreground hover:text-destructive"
+              onClick={() => {
+                if (!window.confirm(t("queue.deleteConfirm"))) return;
+                del.mutateAsync(reel.id).catch(() => toast.error(t("toast.error")));
+              }}
+            >
+              <Trash2Icon />
+              {t("common.delete")}
             </Button>
           </div>
         </div>

@@ -57,6 +57,8 @@ export interface PlaceTripItem {
 }
 
 export interface Place {
+  /** SPOT is a pin; ROUTE is a path whose lat/lng is its start. */
+  kind: "SPOT" | "ROUTE";
   id: string;
   reelId: string;
   kakaoId: string;
@@ -144,4 +146,18 @@ export interface Trip {
   inviteCode: string;
   members: TripMember[];
   days: TripDay[];
+}
+
+export interface PlaceReel {
+  id: string;
+  url: string;
+  note: string | null;
+  caption: string | null;
+  thumbnail: string | null;
+  videoUrl: string | null;
+  uploader: string | null;
+}
+
+export interface PlaceDetail extends Place {
+  reels: PlaceReel[];
 }

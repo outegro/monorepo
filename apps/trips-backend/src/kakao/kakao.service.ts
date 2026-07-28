@@ -57,21 +57,46 @@ export class KakaoService {
    */
   async search(
     query: string,
-    opts: { categoryGroup?: CategoryGroup; district?: string; address?: string } = {},
+    opts: {
+      categoryGroup?: CategoryGroup;
+      district?: string;
+      address?: string;
+      queryAlt?: string;
+      queryKo?: string;
+    } = {},
   ): Promise<Candidate[]> {
     if (!this.apiKey) return [];
 
     const attempts: { q: string; cat?: CategoryGroup }[] = [];
+    const seen = new Set<string>();
+    const add = (q: string | undefined, cat?: CategoryGroup) => {
+      const key = `${q}|${cat ?? ""}`;
+      if (!q?.trim() || seen.has(key)) return;
+      seen.add(key);
+      attempts.push({ q: q.trim(), cat });
+    };
     if (opts.address) {
-      attempts.push({ q: opts.address, cat: opts.categoryGroup });
+      add(opts.address, opts.categoryGroup);
       // Without the filter too: the category guess can be wrong, and a right address with a
       // wrong category would otherwise hide the answer completely.
-      if (opts.categoryGroup) attempts.push({ q: opts.address });
+      if (opts.categoryGroup) add(opts.address);
     }
     if (query) {
-      attempts.push({ q: query, cat: opts.categoryGroup });
-      if (opts.district) attempts.push({ q: `${opts.district} ${query}`, cat: opts.categoryGroup });
+      add(query, opts.categoryGroup);
+      // Bare name, stripped of a district and a branch suffix. Measured: "Crazy Lamb 건대점"
+      // returns nothing while "Crazy Lamb" returns the place — Kakao treats the extra tokens
+      // as constraints and a branch that is not indexed under that exact string kills the hit.
+      const bare = bareName(query, opts.district);
+      add(bare, opts.categoryGroup);
+      add(bare);
+      add(opts.queryAlt, opts.categoryGroup);
+      add(bareName(opts.queryAlt ?? "", opts.district), opts.categoryGroup);
+      if (opts.district) add(`${opts.district} ${bare}`, opts.categoryGroup);
     }
+    // Descriptive Korean last: least precise, but it is what finds a place whose registered
+    // name bears no resemblance to its marketing one.
+    add(opts.queryKo, opts.categoryGroup);
+    add(opts.queryKo);
 
     const merged = new Map<string, Candidate>();
     for (const a of attempts) {
@@ -115,6 +140,22 @@ export class KakaoService {
     const data = (await res.json()) as { documents?: KakaoDoc[] };
     return (data.documents ?? []).map(toCandidate);
   }
+}
+
+/**
+ * Reduce a query to the bare business name: drop the district if it was appended, and drop a
+ * trailing branch token (…점 — 건대점, 명동2호점). Kakao indexes the brand, and the branch
+ * spelling in a caption rarely matches the registered one.
+ */
+export function bareName(query: string, district?: string): string {
+  let q = query.trim();
+  if (district) q = q.replace(new RegExp(`\\s*${escapeRe(district)}\\s*`, "g"), " ");
+  q = q.replace(/\s*\S*점\s*$/u, " ");
+  return q.replace(/\s+/g, " ").trim();
+}
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** Kakao returns coordinates as strings, x=lng and y=lat — an easy pair to swap by accident. */

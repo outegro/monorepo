@@ -34,6 +34,32 @@ export class PlacesService {
     });
   }
 
+  /** One place with everything the detail page shows: its reels, and where it sits in the plan. */
+  async get(userId: string, id: string) {
+    const place = await this.prisma.place.findFirst({
+      where: { id, userId },
+      include: {
+        reels: {
+          select: {
+            id: true,
+            url: true,
+            note: true,
+            caption: true,
+            thumbnail: true,
+            videoUrl: true,
+            uploader: true,
+          },
+          orderBy: { createdAt: "asc" },
+        },
+        tripItems: {
+          select: { id: true, dayId: true, day: { select: { date: true, title: true } } },
+        },
+      },
+    });
+    if (!place) throw new NotFoundException({ code: "place_not_found" });
+    return place;
+  }
+
   async update(userId: string, id: string, input: UpdatePlaceInput) {
     const place = await this.prisma.place.findFirst({ where: { id, userId } });
     if (!place) throw new NotFoundException({ code: "place_not_found" });

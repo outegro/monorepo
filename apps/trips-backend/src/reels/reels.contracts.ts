@@ -78,8 +78,20 @@ export const updateNoteSchema = z.object({ note: z.string().max(2000).nullable()
 
 /** What the LLM is asked to produce from a note. Every field optional — a bare URL yields {}. */
 export const extractionSchema = z.object({
-  /** The string we hand to Kakao keyword search. Korean if the note gave a Korean name. */
+  /**
+   * The place name as the source writes it, verbatim. Deliberately NOT transliterated: Korean
+   * businesses commonly register Latin names and Kakao indexes them that way — measured, "Crazy
+   * Lamb" returns hits while "크레이지 램브" returns none.
+   */
   query: z.string().max(200).optional(),
+  /** A second spelling, only when the source itself supplied one. Never a guessed one. */
+  queryAlt: z.string().max(200).optional(),
+  /**
+   * Korean descriptive phrase — district plus what the place serves. The fallback that carries
+   * the cases a name cannot: "Crazy Lamb" is registered as 미친양꼬치, and only
+   * "건대 양꼬치 무한리필" finds it.
+   */
+  queryKo: z.string().max(200).optional(),
   categoryGroup: categoryGroupSchema.optional(),
   /**
    * A street address if the text contains one, verbatim and Korean-formatted

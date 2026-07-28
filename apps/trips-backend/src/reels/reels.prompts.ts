@@ -20,12 +20,22 @@ export function extractionMessages(note: string, url: string): ChatMessage[] {
         "Return STRICT JSON only, no prose, with these optional keys:\n" +
         '{"query": string, "categoryGroup": "FD6"|"CE7"|"AT4"|"CT1"|"AD5", ' +
         '"address": string, "district": string, "priceHint": string, ' +
-        '"summary": string, "nameEn": string, ' +
+        '"summary": string, "nameEn": string, "queryAlt": string, "queryKo": string, ' +
         '"durationMin": number, "distanceKm": number, "keywords": string[]}\n\n' +
         "Rules:\n" +
-        "- `query` is what Kakao will search for. Prefer the Korean form of a place name: " +
-        "Kakao's index is Korean, so 'Onion Seongsu' should become '어니언 성수'. If the note " +
-        "gives no name at all, omit `query` entirely rather than inventing one.\n" +
+        "- `query` is the place name EXACTLY as the source writes it. Do NOT transliterate. " +
+        "Korean businesses very often register a Latin name and Kakao indexes it that way: " +
+        "'Crazy Lamb' finds the place, the transliteration '크레이지 램브' finds nothing. Copy " +
+        "the name and nothing else — no district, no branch suffix, no category word. If the " +
+        "source gives no name at all, omit `query` rather than inventing one.\n" +
+        "- `queryAlt`: a SECOND spelling only when the source itself contains one (a Korean " +
+        "name alongside the Latin one). Never produce it by transliterating — a guessed " +
+        "spelling is worse than no second attempt.\n" +
+        "- `queryKo`: a Korean phrase DESCRIBING the place, district first, then what it " +
+        "serves or is — '건대 양꼬치 무한리필', '성수 베이글 카페'. This is the fallback that " +
+        "works when a name is not indexed as written: a bar marketed as 'Crazy Lamb' is " +
+        "registered with Kakao as 미친양꼬치, and only a descriptive search finds it. " +
+        "Translate the MEANING, never transliterate the sound.\n" +
         "- `categoryGroup`: FD6 restaurant, CE7 cafe, AT4 tourist attraction, CT1 culture/" +
         "entertainment, AD5 accommodation. Omit if genuinely unclear.\n" +
         "- `address` is a street address if the text contains one, copied verbatim in Korean " +

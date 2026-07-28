@@ -2,6 +2,7 @@
 
 import { Badge, Button, Card, CardContent, Skeleton } from "@outegro/ui";
 import { MapPinIcon, NavigationIcon } from "lucide-react";
+import Link from "next/link";
 import { usePlaces } from "@/lib/api";
 import { type TKey, useI18n } from "@/lib/i18n";
 import type { Place } from "@/lib/types";
@@ -72,7 +73,12 @@ export function PlacesList() {
               <CardContent className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{p.name}</span>
+                    <Link
+                      href={`/places/${p.id}`}
+                      className="font-medium underline-offset-4 hover:underline"
+                    >
+                      {p.name}
+                    </Link>
                     {p.tripItems && p.tripItems.length > 0 ? (
                       <Badge variant="secondary">
                         {p.tripItems.length === 1
