@@ -25,6 +25,11 @@ export class PlacesController {
     return this.places.update(user.userId, id, body);
   }
 
+  @Get(":id")
+  get(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    return this.places.get(user.userId, id);
+  }
+
   @Delete(":id")
   remove(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.places.remove(user.userId, id);

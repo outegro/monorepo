@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { KakaoService } from "./kakao.service";
+import { bareName, KakaoService } from "./kakao.service";
 
 /** Minimal ConfigService stand-in — the real one needs the whole Nest container. */
 function makeService(apiKey = "test-key") {
@@ -89,6 +89,48 @@ describe("KakaoService.search", () => {
     // x is longitude, y is latitude — an easy pair to swap, and Seoul would land in Somalia.
     expect(c?.lat).toBeCloseTo(37.56);
     expect(c?.lng).toBeCloseTo(126.98);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("bareName", () => {
+  // The bug this exists for: "Crazy Lamb 건대점" returns nothing from Kakao while "Crazy Lamb"
+  // returns the brand — the branch token is treated as a constraint and kills the hit.
+  it("drops a trailing branch token", () => {
+    expect(bareName("Crazy Lamb 건대점")).toBe("Crazy Lamb");
+    expect(bareName("무한리필 몽블리 명동2호점")).toBe("무한리필 몽블리");
+  });
+
+  it("drops the district when it was glued onto the name", () => {
+    expect(bareName("성수동 어니언", "성수동")).toBe("어니언");
+  });
+
+  it("leaves a plain name alone", () => {
+    expect(bareName("어니언")).toBe("어니언");
+    expect(bareName("제비봉")).toBe("제비봉");
+  });
+
+  it("does not mangle a name that merely ends in a non-branch word", () => {
+    expect(bareName("고양이사랑채")).toBe("고양이사랑채");
+  });
+});
+
+describe("search fallbacks", () => {
+  // The whole point: the name as written finds nothing, the descriptive Korean phrase finds
+  // the place. "Crazy Lamb" is registered with Kakao as 미친양꼬치.
+  it("falls back to the descriptive Korean query", async () => {
+    const fetchMock = stubFetch({
+      "Crazy Lamb": [],
+      "건대 양꼬치 무한리필": [{ id: "real", place_name: "미친양꼬치" }],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const out = await makeService().search("Crazy Lamb", {
+      district: "건대",
+      queryKo: "건대 양꼬치 무한리필",
+      categoryGroup: "FD6",
+    });
+    expect(out.map((c) => c.name)).toContain("미친양꼬치");
     vi.unstubAllGlobals();
   });
 });

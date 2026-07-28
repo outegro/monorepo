@@ -1,7 +1,16 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { BatchResult, Candidate, CategoryGroup, Place, Reel, Trip, TripItem } from "./types";
+import type {
+  BatchResult,
+  Candidate,
+  CategoryGroup,
+  Place,
+  PlaceDetail,
+  Reel,
+  Trip,
+  TripItem,
+} from "./types";
 
 async function tfetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api/trips${path}`, {
@@ -17,7 +26,14 @@ async function tfetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function useQueue() {
-  return useQuery({ queryKey: ["queue"], queryFn: () => tfetch<Reel[]>("/reels/queue") });
+  return useQuery({
+    queryKey: ["queue"],
+    queryFn: () => tfetch<Reel[]>("/reels/queue"),
+    // Submitting kicks processing off in the background, so the list has to come back on its
+    // own. Polling stops the moment nothing is PENDING — there is nothing to wait for then.
+    refetchInterval: (q) =>
+      (q.state.data ?? []).some((r) => r.status === "PENDING") ? 4000 : false,
+  });
 }
 
 export function useCounts() {
@@ -98,7 +114,7 @@ export function useConfirm() {
 export function useSkip() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => tfetch<Reel>(`/reels/${id}`, { method: "DELETE" }),
+    mutationFn: (id: string) => tfetch<Reel>(`/reels/${id}/skip`, { method: "POST" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["queue"] });
       qc.invalidateQueries({ queryKey: ["counts"] });
@@ -207,5 +223,24 @@ export function useReelMedia(reelId: string | null) {
     enabled: Boolean(reelId),
     staleTime: 10 * 60 * 1000,
     retry: false,
+  });
+}
+
+export function useDeleteReel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => tfetch<{ ok: true }>(`/reels/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["queue"] });
+      qc.invalidateQueries({ queryKey: ["places"] });
+    },
+  });
+}
+
+export function usePlace(id: string | null) {
+  return useQuery({
+    queryKey: ["place", id],
+    queryFn: () => tfetch<PlaceDetail>(`/places/${id}`),
+    enabled: Boolean(id),
   });
 }

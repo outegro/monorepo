@@ -73,11 +73,36 @@ export class ReelsService {
     if (rows.length === 0) return { created: 0, duplicates: 0, invalid };
 
     const result = await this.prisma.reel.createMany({ data: rows, skipDuplicates: true });
+
+    // Kick processing off immediately and do NOT await it: reading a caption and searching
+    // Kakao takes a few seconds per reel, and the submit response should not sit on that. The
+    // rows are already PENDING, so the UI shows them as processing and polls them to done —
+    // a "find places" button for something the user obviously wants was just a wrong default.
+    void this.processPending(userId, rows.length).catch((e) =>
+      this.logger.warn(`background processing after submit failed: ${String(e)}`),
+    );
+
     return {
       created: result.count,
       duplicates: rows.length - result.count,
       invalid,
     };
+  }
+
+  /** Remove a reel outright, and with it any place that existed only because of it. */
+  async remove(userId: string, id: string) {
+    const reel = await this.prisma.reel.findFirst({
+      where: { id, userId },
+      include: { place: { include: { _count: { select: { reels: true } } } } },
+    });
+    if (!reel) throw new NotFoundException({ code: "reel_not_found" });
+
+    // A place shared with other reels stays; one that only this reel produced goes with it.
+    if (reel.place && reel.place._count.reels <= 1) {
+      await this.prisma.place.delete({ where: { id: reel.place.id } });
+    }
+    await this.prisma.reel.delete({ where: { id } });
+    return { ok: true };
   }
 
   /**
@@ -136,11 +161,13 @@ export class ReelsService {
 
       // An address alone is enough — a place with no usable name still resolves from it.
       const candidates =
-        query || extracted.address
+        query || extracted.address || extracted.queryKo
           ? await this.kakao.search(query ?? "", {
               categoryGroup: extracted.categoryGroup,
               district: extracted.district,
               address: extracted.address,
+              queryAlt: extracted.queryAlt,
+              queryKo: extracted.queryKo,
             })
           : [];
 

@@ -56,6 +56,11 @@ export class ReelsController {
     return this.reels.media(user.userId, id);
   }
 
+  @Delete(":id")
+  remove(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    return this.reels.remove(user.userId, id);
+  }
+
   @Get("queue")
   queue(@CurrentUser() user: AuthUser) {
     return this.reels.listForReview(user.userId);
@@ -94,7 +99,12 @@ export class ReelsController {
     return this.reels.confirm(user.userId, id, body);
   }
 
-  @Delete(":id")
+  /**
+   * Skip is a status change, not a delete — the reel stays so the same link is not re-added
+   * later and re-reviewed. Its own path: it used to share DELETE /:id with real deletion, and
+   * Nest resolves the first matching route, which quietly made "skip" destroy the row.
+   */
+  @Post(":id/skip")
   skip(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.reels.skip(user.userId, id);
   }
