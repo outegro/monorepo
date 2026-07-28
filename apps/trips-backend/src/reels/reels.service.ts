@@ -112,13 +112,14 @@ export class ReelsService {
   async processOne(id: string, url: string, note: string | null): Promise<void> {
     try {
       const meta = await this.reelMeta.fetch(url);
-      if (meta.caption || meta.uploader) {
+      if (meta.caption || meta.uploader || meta.videoUrl) {
         await this.prisma.reel.update({
           where: { id },
           data: {
             caption: meta.caption,
             uploader: meta.uploader,
             thumbnail: meta.thumbnail,
+            videoUrl: meta.videoUrl,
           },
         });
       }

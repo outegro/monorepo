@@ -1,7 +1,7 @@
 "use client";
 
 import { AddReels } from "@/components/add-reels";
-import { ReviewQueue } from "@/components/review-queue";
+import { ReviewList } from "@/components/review-list";
 import { Shell } from "@/components/shell";
 
 export default function HomePage() {
@@ -11,7 +11,7 @@ export default function HomePage() {
         {() => (
           <div className="flex flex-col gap-6">
             <AddReels />
-            <ReviewQueue />
+            <ReviewList />
           </div>
         )}
       </Shell>
